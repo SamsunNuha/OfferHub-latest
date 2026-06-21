@@ -1,0 +1,6 @@
+{
+  "name": "OfferHub Sri Lanka",
+  "description": "The ultimate real-time offer discovery, product marketplace, and loyalty platform in Sri Lanka. Buy products, redeem coupons, earn points, and get real-time recommendations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

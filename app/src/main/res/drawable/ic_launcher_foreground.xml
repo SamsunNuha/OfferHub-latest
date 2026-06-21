@@ -1,0 +1,21 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Centered Discount Ticket Tag -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:pathData="M34,30 L74,30 C78,30 80,32 80,36 L80,48 C77,48 74,51 74,54 C74,57 77,60 80,60 L80,72 C80,76 78,78 74,78 L34,78 C30,78 28,76 28,72 L28,60 C31,60 34,57 34,54 C34,51 31,48 28,48 L28,36 C28,32 30,30 34,30 Z" />
+    <path
+        android:fillColor="#FF5722"
+        android:pathData="M48,54 C48,50.7 45.3,48 42,48 C38.7,48 36,50.7 36,54 C36,57.3 38.7,60 42,60 C45.3,60 48,57.3 48,54 Z" />
+    <!-- Percent sign vectors inside discount card -->
+    <path
+        android:fillColor="#FF5722"
+        android:pathData="M54,64 L68,44 M56,44 L58,44 M64,64 L66,64"
+        android:strokeColor="#FF5722"
+        android:strokeWidth="2.5" />
+</vector>

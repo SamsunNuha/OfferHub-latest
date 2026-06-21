@@ -1,0 +1,42 @@
+
+node_modules/
+.expo/
+dist/
+build/
+android/.gradle/
+ios/Pods/
+ios/build/
+.DS_Store
+npm-debug.log*
+yarn-debug.log*
+
+# OS
+.DS_Store
+
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+.expo-shared/
+
+# Build outputs
+dist/
+build/
+
+# Android
+android/.gradle/
+android/app/build/
+
+# iOS
+ios/Pods/
+ios/build/
+ios/DerivedData/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+*.log
+
+# Env files (if you use them)
+.env
