@@ -43,7 +43,7 @@ export const AuthScreen: React.FC = () => {
   const { width: SCREEN_W } = useWindowDimensions();
   const IS_WEB_WIDE = Platform.OS === 'web' && SCREEN_W > 768;
 
-  const { isDarkMode, toggleDarkMode, login, register } = useAppContext();
+  const { isDarkMode, toggleDarkMode, login, register, navigateTo } = useAppContext();
 
   const colors = {
     bg: isDarkMode ? '#060112' : '#F6F2FF',
@@ -384,16 +384,31 @@ export const AuthScreen: React.FC = () => {
 
               {/* SSO Buttons for Sign In */}
               {!isRegister && (
-                <View style={{ gap: 12, marginBottom: 24 }}>
-                  <TouchableOpacity style={[styles.ssoBtn, { borderColor: colors.inputBorder }]} onPress={() => {/* TODO: Google sign‑in */}}>
+                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+                  <TouchableOpacity style={[styles.ssoBtn, { flex: 1, borderColor: colors.inputBorder }]} onPress={() => {/* TODO: Google sign‑in */}}>
                     <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }} style={{ width: 18, height: 18 }} />
-                    <Text style={[styles.ssoBtnText, { color: colors.text }]}>Continue with Google</Text>
+                    <Text style={[styles.ssoBtnText, { color: colors.text }]}>Google</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.ssoBtn, { borderColor: colors.inputBorder }]} onPress={() => {/* TODO: Facebook sign‑in */}}>
+                  <TouchableOpacity style={[styles.ssoBtn, { flex: 1, borderColor: colors.inputBorder }]} onPress={() => {/* TODO: Facebook sign‑in */}}>
                     <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/733/733547.png' }} style={{ width: 18, height: 18 }} />
-                    <Text style={[styles.ssoBtnText, { color: colors.text }]}>Continue with Facebook</Text>
+                    <Text style={[styles.ssoBtnText, { color: colors.text }]}>Facebook</Text>
                   </TouchableOpacity>
                 </View>
+              )}
+
+              {/* Toggle links to switch screens */}
+              {!isRegister ? (
+                <TouchableOpacity onPress={() => navigateTo('REGISTER')} style={{ marginTop: 8 }}>
+                  <Text style={[styles.switchText, { color: colors.subText }]}>
+                    Don't have an account? <Text style={[styles.switchLink, { color: colors.accent }]}>Register</Text>
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity onPress={() => setIsRegister(false)} style={{ marginTop: 8 }}>
+                  <Text style={[styles.switchText, { color: colors.subText }]}>
+                    Already have an account? <Text style={[styles.switchLink, { color: colors.accent }]}>Sign In</Text>
+                  </Text>
+                </TouchableOpacity>
               )}
             </View>
           </View>

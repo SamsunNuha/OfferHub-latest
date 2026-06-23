@@ -3,7 +3,7 @@ import {
   StyleSheet, Text, View, Image, TouchableOpacity, ScrollView, 
   ActivityIndicator, Animated, Platform, Alert, TextInput, Dimensions
 } from 'react-native';
-import * as ImagePicker from 'react-native-image-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { useAppContext } from '../shared/AppContext';
 import { useDimensions } from '../hooks/useDimensions';
 import { analyzeImageWithGemini } from '../services/geminiService';
@@ -228,24 +228,37 @@ export const NativeLabsScreen: React.FC = () => {
     return common.length / Math.max(Math.min(w1.length, w2.length), 1);
   };
 
-  const openCamera = () => {
-    ImagePicker.launchCamera({ mediaType: 'photo', includeBase64: true, quality: 0.5 }, (response) => {
-      if (response.didCancel) return;
-      if (response.assets && response.assets.length > 0 && response.assets[0].base64) {
-        setSelectedImage(response.assets[0].uri || null);
-        triggerImageAIScan('custom', response.assets[0].base64);
-      }
+  const openCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert("Permission Required", "Camera permission is needed to scan.");
+      return;
+    }
+    const response = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.5,
+      base64: true,
     });
+    if (response.canceled) return;
+    if (response.assets && response.assets.length > 0 && response.assets[0].base64) {
+      setSelectedImage(response.assets[0].uri || null);
+      triggerImageAIScan('custom', response.assets[0].base64);
+    }
   };
 
-  const openGallery = () => {
-    ImagePicker.launchImageLibrary({ mediaType: 'photo', includeBase64: true, quality: 0.5 }, (response) => {
-      if (response.didCancel) return;
-      if (response.assets && response.assets.length > 0 && response.assets[0].base64) {
-        setSelectedImage(response.assets[0].uri || null);
-        triggerImageAIScan('custom', response.assets[0].base64);
-      }
+  const openGallery = async () => {
+    const response = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.5,
+      base64: true,
     });
+    if (response.canceled) return;
+    if (response.assets && response.assets.length > 0 && response.assets[0].base64) {
+      setSelectedImage(response.assets[0].uri || null);
+      triggerImageAIScan('custom', response.assets[0].base64);
+    }
   };
 
   // Diagnostics actions

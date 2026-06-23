@@ -1,720 +1,520 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Modal,
-  FlatList,
+  View, Text, TextInput, TouchableOpacity, ScrollView,
+  StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
+  Modal, FlatList, ImageBackground, useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { UserPlus, Mail, Phone, MapPin, Lock, Eye, EyeOff, User, Store, Shield, CheckCircle, ChevronDown } from 'lucide-react-native';
+import {
+  UserPlus, Mail, Phone, MapPin, Lock, Eye, EyeOff,
+  User, Store, Shield, CheckCircle, ChevronDown,
+  Globe, Sun, Moon, ShoppingBag,
+} from 'lucide-react-native';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase/firebase'; // Adjust this import to match your project
-
-const theme = {
-  primary: '#6C3BFF',
-  secondary: '#8B5CF6',
-  background: '#F8F6FF',
-  card: '#FFFFFF',
-  border: '#E9E2FF',
-  text: '#1E1B4B',
-  error: '#EF4444',
-  success: '#10B981',
-  placeholder: '#9CA3AF',
-};
+import { auth, db } from '../firebase/firebase';
+import { useAppContext } from '../shared/AppContext';
 
 const districts = [
-  "Ampara", "Anuradhapura", "Badulla", "Batticaloa", "Colombo", "Galle", 
-  "Gampaha", "Hambantota", "Jaffna", "Kalutara", "Kandy", "Kegalle", 
-  "Kilinochchi", "Kurunegala", "Mannar", "Matale", "Matara", "Moneragala", 
-  "Mullaitivu", "Nuwara Eliya", "Polonnaruwa", "Puttalam", "Ratnapura", 
-  "Trincomalee", "Vavuniya"
+  "Ampara","Anuradhapura","Badulla","Batticaloa","Colombo","Galle",
+  "Gampaha","Hambantota","Jaffna","Kalutara","Kandy","Kegalle",
+  "Kilinochchi","Kurunegala","Mannar","Matale","Matara","Moneragala",
+  "Mullaitivu","Nuwara Eliya","Polonnaruwa","Puttalam","Ratnapura",
+  "Trincomalee","Vavuniya",
 ];
 
 const schema = yup.object().shape({
   fullName: yup.string().required('Full name is required'),
-  email: yup.string().email('Invalid email address').required('Email is required'),
+  email: yup.string().email('Invalid email').required('Email is required'),
   phone: yup.string()
     .matches(/^[0-9]{9}$/, 'Enter exactly 9 digits after +94')
     .required('Phone is required'),
   district: yup.string().required('District is required'),
   password: yup.string()
-    .min(8, 'Password must be at least 8 characters')
-    .matches(/[A-Z]/, 'Must contain at least one uppercase letter')
-    .matches(/[0-9!@#$%^&*()]/, 'Must contain at least one number or symbol')
+    .min(8, 'Min 8 characters')
+    .matches(/[A-Z]/, 'Need uppercase letter')
+    .matches(/[0-9!@#$%^&*()]/, 'Need number or symbol')
     .required('Password is required'),
   confirmPassword: yup.string()
     .oneOf([yup.ref('password')], 'Passwords must match')
-    .required('Confirm password is required'),
+    .required('Confirm password'),
 });
 
 type FormData = yup.InferType<typeof schema>;
 type AccountType = 'user' | 'merchant' | 'admin';
 
 export default function RegisterScreen({ navigation }: any) {
+  const { navigateTo, isDarkMode, toggleDarkMode } = useAppContext();
+  const { width: SCREEN_W } = useWindowDimensions();
+  const IS_DESKTOP = Platform.OS === 'web' && SCREEN_W > 768;
+
+  const C = {
+    cardBg: isDarkMode ? 'rgba(13,6,30,0.82)' : 'rgba(255,255,255,0.95)',
+    cardBorder: isDarkMode ? 'rgba(108,59,255,0.3)' : 'rgba(108,59,255,0.2)',
+    inputBg: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(108,59,255,0.04)',
+    inputBorder: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(108,59,255,0.3)',
+    text: isDarkMode ? '#FFFFFF' : '#120024',
+    sub: isDarkMode ? '#8E86A8' : '#6D5C80',
+    accent: '#A85FFF',
+    gradient: ['#7C4DFF', '#C77DFF'] as [string, string],
+    navBg: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(108,59,255,0.05)',
+    navBorder: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(108,59,255,0.15)',
+    error: '#FF5252',
+    success: '#00E676',
+  };
+
   const [accountType, setAccountType] = useState<AccountType>('user');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const [showCpw, setShowCpw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [firebaseError, setFirebaseError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [showDistrictModal, setShowDistrictModal] = useState(false);
-  
+
   const { control, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: yupResolver(schema),
     defaultValues: { district: '' },
     mode: 'onChange',
   });
 
-  const passwordValue = watch('password', '');
-
-  const hasMinLength = passwordValue.length >= 8;
-  const hasUppercase = /[A-Z]/.test(passwordValue);
-  const hasNumberOrSymbol = /[0-9!@#$%^&*()]/.test(passwordValue);
-
-  const calculateStrength = () => {
-    let score = 0;
-    if (hasMinLength) score++;
-    if (hasUppercase) score++;
-    if (hasNumberOrSymbol) score++;
-    return score;
-  };
-
-  const strengthScore = calculateStrength();
+  const pw = watch('password', '');
+  const hasLen = pw.length >= 8;
+  const hasUpper = /[A-Z]/.test(pw);
+  const hasSymbol = /[0-9!@#$%^&*()]/.test(pw);
+  const strength = [hasLen, hasUpper, hasSymbol].filter(Boolean).length;
+  const strengthColor = ['#FF5252', '#FFA726', '#00E676'][strength - 1] ?? '#FF5252';
 
   const handleRegister = async (data: FormData) => {
     setLoading(true);
     setFirebaseError('');
+    setSuccessMsg('');
     try {
-      // 1. Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      const user = userCredential.user;
-
-      // 2. Save additional data to Firestore
-      const phoneWithCode = `+94${data.phone}`;
-      
-      await setDoc(doc(db, 'users', user.uid), {
+      const cred = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      await setDoc(doc(db, 'users', cred.user.uid), {
         fullName: data.fullName,
         email: data.email,
-        phone: phoneWithCode,
+        phone: `+94${data.phone}`,
         district: data.district,
         role: accountType,
         createdAt: new Date().toISOString(),
       });
-
-      // Navigate to home or show success message
-      if (navigation && navigation.navigate) {
-         navigation.navigate('Home');
-      }
-
-    } catch (error: any) {
-      setFirebaseError(error.message || 'Failed to create account.');
+      setSuccessMsg('Account created! Redirecting...');
+      setTimeout(() => navigateTo('AUTH'), 1500);
+    } catch (e: any) {
+      setFirebaseError(e.message || 'Registration failed.');
     } finally {
       setLoading(false);
     }
   };
 
-  const renderAccountTypeCard = (type: AccountType, IconComp: any, title: string, desc: string) => {
-    const isSelected = accountType === type;
-    
-    return (
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => setAccountType(type)}
-        style={[styles.accountCard, isSelected && styles.accountCardSelected]}
-      >
-        {isSelected ? (
-          <LinearGradient
-            colors={[theme.primary, theme.secondary]}
-            style={[StyleSheet.absoluteFill, { borderRadius: 12 }]}
-          />
-        ) : null}
-        
-        <View style={styles.accountCardContent}>
-          <View style={styles.cardHeaderRow}>
-            <IconComp size={24} color={isSelected ? '#fff' : theme.primary} />
-            {isSelected && <CheckCircle size={20} color="#fff" />}
-          </View>
-          <Text style={[styles.cardTitle, { color: isSelected ? '#fff' : theme.text }]}>
-            {title}
-          </Text>
-          <Text style={[styles.cardDesc, { color: isSelected ? 'rgba(255,255,255,0.8)' : theme.placeholder }]}>
-            {desc}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const Field = ({
+    label, icon: Icon, children, error,
+  }: { label: string; icon: any; children: React.ReactNode; error?: string }) => (
+    <View style={styles.fieldGroup}>
+      <Text style={[styles.label, { color: C.text }]}>{label}</Text>
+      <View style={[styles.inputRow, { borderColor: C.inputBorder, backgroundColor: C.inputBg }]}>
+        <Icon size={17} color={C.sub} />
+        {children}
+      </View>
+      {error ? <Text style={[styles.errorText, { color: C.error }]}>{error}</Text> : null}
+    </View>
+  );
+
+  const accountTypes: { type: AccountType; Icon: any; label: string; desc: string }[] = [
+    { type: 'user', Icon: User, label: 'Customer', desc: 'Explore & shop' },
+    { type: 'merchant', Icon: Store, label: 'Merchant', desc: 'Promote business' },
+    { type: 'admin', Icon: Shield, label: 'Admin', desc: 'Manage platform' },
+  ];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          
-          {/* Header */}
-          <View style={styles.header}>
-            <LinearGradient
-              colors={[theme.primary, theme.secondary]}
-              style={styles.iconCircle}
-            >
-              <UserPlus color="#fff" size={32} />
-            </LinearGradient>
-            <Text style={styles.title}>Create Your Account</Text>
-            <Text style={styles.subtitle}>Join <Text style={{ color: theme.primary, fontWeight: 'bold' }}>Offer Lanka</Text> and discover exclusive offers</Text>
-          </View>
+    <ImageBackground
+      source={require('../assets/city_skyline_bg.png')}
+      style={{ flex: 1 }}
+      imageStyle={{ opacity: isDarkMode ? 0.8 : 0.2 }}
+    >
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: isDarkMode ? 'rgba(8,3,20,0.65)' : 'rgba(246,242,255,0.85)' }]} />
 
-          {firebaseError ? (
-            <View style={styles.errorBanner}>
-              <Text style={styles.errorBannerText}>{firebaseError}</Text>
+      {/* NAVBAR */}
+      <View style={styles.navbar}>
+        <View style={styles.navBrand}>
+          <LinearGradient colors={C.gradient} style={styles.navLogo} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+            <ShoppingBag size={16} color="#fff" />
+          </LinearGradient>
+          <Text style={styles.navBrandText}>
+            <Text style={{ color: C.text }}>OFFER </Text>
+            <Text style={{ color: C.accent }}>LANKA</Text>
+          </Text>
+        </View>
+        <View style={styles.navRight}>
+          <TouchableOpacity style={[styles.navPill, { backgroundColor: C.navBg, borderColor: C.navBorder }]}>
+            <Globe size={12} color={C.text} />
+            <Text style={[styles.navPillText, { color: C.text }]}>EN</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.navIcon, { backgroundColor: C.navBg, borderColor: C.navBorder }]} onPress={toggleDarkMode}>
+            {isDarkMode ? <Sun size={15} color={C.accent} /> : <Moon size={15} color={C.accent} />}
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* CONTENT */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          contentContainerStyle={[styles.scroll, IS_DESKTOP && styles.scrollDesktop]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* WIDE CARD */}
+          <View style={[
+            styles.card,
+            IS_DESKTOP && styles.cardDesktop,
+            { backgroundColor: C.cardBg, borderColor: C.cardBorder },
+          ]}>
+
+            {/* Card Header */}
+            <View style={styles.cardHeader}>
+              <LinearGradient colors={C.gradient} style={styles.iconCircle} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                <UserPlus size={22} color="#fff" />
+              </LinearGradient>
+              <Text style={[styles.title, { color: C.text }]}>
+                Create <Text style={{ color: C.accent }}>Account</Text>
+              </Text>
+              <Text style={[styles.subtitle, { color: C.sub }]}>
+                Join Offer Lanka and discover exclusive offers across Sri Lanka
+              </Text>
             </View>
-          ) : null}
 
-          {/* Form Fields */}
-          <View style={styles.form}>
-            
-            {/* Full Name */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>FULL NAME</Text>
-              <View style={[styles.inputContainer, errors.fullName && styles.inputError]}>
-                <User color={theme.primary} size={20} style={styles.inputIcon} />
-                <Controller
-                  control={control}
-                  name="fullName"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter your full name"
-                      placeholderTextColor={theme.placeholder}
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      value={value}
-                    />
-                  )}
-                />
+            {/* Banners */}
+            {!!firebaseError && (
+              <View style={[styles.banner, { backgroundColor: 'rgba(213,0,0,0.12)', borderColor: '#D50000' }]}>
+                <Text style={{ color: C.error, fontSize: 13, fontWeight: '600', textAlign: 'center' }}>❌  {firebaseError}</Text>
               </View>
-              {errors.fullName && <Text style={styles.errorText}>{errors.fullName.message}</Text>}
-            </View>
-
-            {/* Email Address */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>EMAIL ADDRESS</Text>
-              <View style={[styles.inputContainer, errors.email && styles.inputError]}>
-                <Mail color={theme.primary} size={20} style={styles.inputIcon} />
-                <Controller
-                  control={control}
-                  name="email"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter your email address"
-                      placeholderTextColor={theme.placeholder}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      value={value}
-                    />
-                  )}
-                />
+            )}
+            {!!successMsg && (
+              <View style={[styles.banner, { backgroundColor: 'rgba(0,200,83,0.1)', borderColor: '#00C853' }]}>
+                <Text style={{ color: C.success, fontSize: 13, fontWeight: '600', textAlign: 'center' }}>✅  {successMsg}</Text>
               </View>
-              {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
-            </View>
+            )}
 
-            {/* Phone Number */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>PHONE NUMBER</Text>
-              <View style={[styles.inputContainer, errors.phone && styles.inputError]}>
-                <Phone color={theme.primary} size={20} style={styles.inputIcon} />
-                <View style={styles.phonePrefix}>
-                  <Text style={styles.phonePrefixText}>🇱🇰 +94</Text>
-                  <ChevronDown color={theme.placeholder} size={16} />
-                </View>
-                <View style={styles.divider} />
-                <Controller
-                  control={control}
-                  name="phone"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      style={styles.input}
-                      placeholder="7X XXX XXXX"
-                      placeholderTextColor={theme.placeholder}
-                      keyboardType="phone-pad"
-                      maxLength={9}
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      value={value}
+            {/* 2-COLUMN GRID */}
+            <View style={[styles.grid, IS_DESKTOP && styles.gridDesktop]}>
+
+              {/* LEFT COLUMN */}
+              <View style={[styles.col, IS_DESKTOP && styles.colDesktop]}>
+
+                {/* Full Name */}
+                <Field label="Full Name" icon={User} error={errors.fullName?.message}>
+                  <Controller
+                    control={control} name="fullName"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <TextInput
+                        style={[styles.input, { color: C.text }]}
+                        placeholder="Enter your full name"
+                        placeholderTextColor={C.sub}
+                        onBlur={onBlur} onChangeText={onChange} value={value}
+                      />
+                    )}
+                  />
+                </Field>
+
+                {/* Phone */}
+                <Field label="Phone Number" icon={Phone} error={errors.phone?.message}>
+                  <Text style={[styles.prefix, { color: C.sub }]}>🇱🇰 +94</Text>
+                  <View style={[styles.divider, { backgroundColor: C.inputBorder }]} />
+                  <Controller
+                    control={control} name="phone"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <TextInput
+                        style={[styles.input, { color: C.text }]}
+                        placeholder="7X XXX XXXX"
+                        placeholderTextColor={C.sub}
+                        keyboardType="phone-pad" maxLength={9}
+                        onBlur={onBlur} onChangeText={onChange} value={value}
+                      />
+                    )}
+                  />
+                </Field>
+
+                {/* Password */}
+                <View style={styles.fieldGroup}>
+                  <Text style={[styles.label, { color: C.text }]}>Password</Text>
+                  <View style={[styles.inputRow, { borderColor: C.inputBorder, backgroundColor: C.inputBg }]}>
+                    <Lock size={17} color={C.sub} />
+                    <Controller
+                      control={control} name="password"
+                      render={({ field: { onChange, onBlur, value } }) => (
+                        <TextInput
+                          style={[styles.input, { color: C.text }]}
+                          placeholder="••••••••••••"
+                          placeholderTextColor={C.sub}
+                          secureTextEntry={!showPw}
+                          onBlur={onBlur} onChangeText={onChange} value={value}
+                        />
+                      )}
                     />
-                  )}
-                />
-              </View>
-              {errors.phone && <Text style={styles.errorText}>{errors.phone.message}</Text>}
-            </View>
-
-            {/* District Dropdown */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>SELECT DISTRICT (SRI LANKA)</Text>
-              <TouchableOpacity 
-                activeOpacity={0.7} 
-                onPress={() => setShowDistrictModal(true)}
-                style={[styles.inputContainer, errors.district && styles.inputError]}
-              >
-                <MapPin color={theme.primary} size={20} style={styles.inputIcon} />
-                <Controller
-                  control={control}
-                  name="district"
-                  render={({ field: { value } }) => (
-                    <Text style={[styles.input, { marginTop: Platform.OS === 'ios' ? 0 : 3 }, !value && { color: theme.placeholder }]}>
-                      {value || "Select your district"}
-                    </Text>
-                  )}
-                />
-                <ChevronDown color={theme.placeholder} size={20} style={{ marginRight: 16 }} />
-              </TouchableOpacity>
-              {errors.district && <Text style={styles.errorText}>{errors.district.message}</Text>}
-            </View>
-
-            {/* Password */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>PASSWORD</Text>
-              <View style={[styles.inputContainer, errors.password && styles.inputError]}>
-                <Lock color={theme.primary} size={20} style={styles.inputIcon} />
-                <Controller
-                  control={control}
-                  name="password"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter your password"
-                      placeholderTextColor={theme.placeholder}
-                      secureTextEntry={!showPassword}
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      value={value}
-                    />
-                  )}
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-                  {showPassword ? <EyeOff color={theme.primary} size={20} /> : <Eye color={theme.primary} size={20} />}
-                </TouchableOpacity>
-              </View>
-              {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
-              
-              {/* Password Strength */}
-              {passwordValue.length > 0 && (
-                <View style={styles.strengthContainer}>
-                  <Text style={styles.strengthLabel}>Password strength</Text>
-                  <View style={styles.strengthBars}>
-                    <View style={[styles.strengthBar, strengthScore >= 1 && { backgroundColor: theme.primary }]} />
-                    <View style={[styles.strengthBar, strengthScore >= 2 && { backgroundColor: theme.primary }]} />
-                    <View style={[styles.strengthBar, strengthScore >= 3 && { backgroundColor: theme.primary }]} />
+                    <TouchableOpacity onPress={() => setShowPw(v => !v)}>
+                      {showPw ? <Eye size={16} color={C.sub} /> : <EyeOff size={16} color={C.sub} />}
+                    </TouchableOpacity>
                   </View>
-                  <View style={styles.strengthChecks}>
-                    <View style={styles.checkItem}>
-                      <CheckCircle size={14} color={hasMinLength ? theme.primary : theme.placeholder} />
-                      <Text style={[styles.checkText, hasMinLength && { color: theme.text }]}>At least 8 characters</Text>
+                  {errors.password && <Text style={[styles.errorText, { color: C.error }]}>{errors.password.message}</Text>}
+                  {pw.length > 0 && (
+                    <View style={{ marginTop: 8, gap: 6 }}>
+                      <View style={{ flexDirection: 'row', gap: 6 }}>
+                        {[0, 1, 2].map(i => (
+                          <View key={i} style={[styles.strengthBar, {
+                            backgroundColor: i < strength ? strengthColor : (isDarkMode ? 'rgba(255,255,255,0.1)' : '#E9E2FF'),
+                          }]} />
+                        ))}
+                      </View>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                        {[{ met: hasLen, label: '8+ chars' }, { met: hasUpper, label: 'Uppercase' }, { met: hasSymbol, label: 'Number/Symbol' }].map(({ met, label }) => (
+                          <View key={label} style={styles.checkItem}>
+                            <CheckCircle size={11} color={met ? C.accent : C.sub} />
+                            <Text style={{ color: met ? C.text : C.sub, fontSize: 10 }}>{label}</Text>
+                          </View>
+                        ))}
+                      </View>
                     </View>
-                    <View style={styles.checkItem}>
-                      <CheckCircle size={14} color={hasUppercase ? theme.primary : theme.placeholder} />
-                      <Text style={[styles.checkText, hasUppercase && { color: theme.text }]}>One uppercase letter</Text>
-                    </View>
-                    <View style={styles.checkItem}>
-                      <CheckCircle size={14} color={hasNumberOrSymbol ? theme.primary : theme.placeholder} />
-                      <Text style={[styles.checkText, hasNumberOrSymbol && { color: theme.text }]}>One number or symbol</Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-            </View>
-
-            {/* Confirm Password */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>CONFIRM PASSWORD</Text>
-              <View style={[styles.inputContainer, errors.confirmPassword && styles.inputError]}>
-                <Lock color={theme.primary} size={20} style={styles.inputIcon} />
-                <Controller
-                  control={control}
-                  name="confirmPassword"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Confirm your password"
-                      placeholderTextColor={theme.placeholder}
-                      secureTextEntry={!showConfirmPassword}
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      value={value}
-                    />
                   )}
-                />
-                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
-                  {showConfirmPassword ? <EyeOff color={theme.primary} size={20} /> : <Eye color={theme.primary} size={20} />}
-                </TouchableOpacity>
+                </View>
+
               </View>
-              {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword.message}</Text>}
+
+              {/* RIGHT COLUMN */}
+              <View style={[styles.col, IS_DESKTOP && styles.colDesktop]}>
+
+                {/* Email */}
+                <Field label="Email Address" icon={Mail} error={errors.email?.message}>
+                  <Controller
+                    control={control} name="email"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <TextInput
+                        style={[styles.input, { color: C.text }]}
+                        placeholder="Enter your email address"
+                        placeholderTextColor={C.sub}
+                        keyboardType="email-address" autoCapitalize="none"
+                        onBlur={onBlur} onChangeText={onChange} value={value}
+                      />
+                    )}
+                  />
+                </Field>
+
+                {/* District */}
+                <View style={styles.fieldGroup}>
+                  <Text style={[styles.label, { color: C.text }]}>District</Text>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setShowDistrictModal(true)}
+                    style={[styles.inputRow, { borderColor: C.inputBorder, backgroundColor: C.inputBg }]}
+                  >
+                    <MapPin size={17} color={C.sub} />
+                    <Controller
+                      control={control} name="district"
+                      render={({ field: { value } }) => (
+                        <Text style={[styles.input, { color: value ? C.text : C.sub }]}>
+                          {value || 'Select your district'}
+                        </Text>
+                      )}
+                    />
+                    <ChevronDown size={16} color={C.sub} />
+                  </TouchableOpacity>
+                  {errors.district && <Text style={[styles.errorText, { color: C.error }]}>{errors.district.message}</Text>}
+                </View>
+
+                {/* Confirm Password */}
+                <View style={styles.fieldGroup}>
+                  <Text style={[styles.label, { color: C.text }]}>Confirm Password</Text>
+                  <View style={[styles.inputRow, { borderColor: C.inputBorder, backgroundColor: C.inputBg }]}>
+                    <Lock size={17} color={C.sub} />
+                    <Controller
+                      control={control} name="confirmPassword"
+                      render={({ field: { onChange, onBlur, value } }) => (
+                        <TextInput
+                          style={[styles.input, { color: C.text }]}
+                          placeholder="••••••••••••"
+                          placeholderTextColor={C.sub}
+                          secureTextEntry={!showCpw}
+                          onBlur={onBlur} onChangeText={onChange} value={value}
+                        />
+                      )}
+                    />
+                    <TouchableOpacity onPress={() => setShowCpw(v => !v)}>
+                      {showCpw ? <Eye size={16} color={C.sub} /> : <EyeOff size={16} color={C.sub} />}
+                    </TouchableOpacity>
+                  </View>
+                  {errors.confirmPassword && <Text style={[styles.errorText, { color: C.error }]}>{errors.confirmPassword.message}</Text>}
+                </View>
+
+              </View>
             </View>
 
-            {/* Account Type */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>ACCOUNT PORTAL TYPE</Text>
-              <View style={styles.cardsRow}>
-                {renderAccountTypeCard('user', User, 'User', 'I want to explore offers & shop')}
-                {renderAccountTypeCard('merchant', Store, 'Merchant', 'I want to promote my business')}
-                {renderAccountTypeCard('admin', Shield, 'Admin', 'I want to manage the platform')}
+            {/* ACCOUNT TYPE — full width */}
+            <View style={[styles.fieldGroup, { marginTop: 4 }]}>
+              <Text style={[styles.label, { color: C.text }]}>Account Type</Text>
+              <View style={styles.roleRow}>
+                {accountTypes.map(({ type, Icon, label, desc }) => {
+                  const sel = accountType === type;
+                  return (
+                    <TouchableOpacity
+                      key={type}
+                      onPress={() => setAccountType(type)}
+                      style={[
+                        styles.roleBtn,
+                        { borderColor: sel ? C.accent : C.inputBorder },
+                        sel && { backgroundColor: 'rgba(168,95,255,0.13)' },
+                      ]}
+                    >
+                      <Icon size={20} color={sel ? C.accent : C.sub} />
+                      <Text style={{ color: sel ? C.accent : C.sub, fontSize: 12, fontWeight: '700', marginTop: 6 }}>{label}</Text>
+                      <Text style={{ color: C.sub, fontSize: 10, marginTop: 2, textAlign: 'center' }}>{desc}</Text>
+                      {sel && <CheckCircle size={12} color={C.accent} style={{ position: 'absolute', top: 8, right: 8 }} />}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
 
-            {/* Submit Button */}
-            <TouchableOpacity 
-              activeOpacity={0.8} 
+            {/* SUBMIT */}
+            <TouchableOpacity
+              activeOpacity={0.85}
               onPress={handleSubmit(handleRegister)}
               disabled={loading}
               style={{ marginTop: 10 }}
             >
               <LinearGradient
-                colors={[theme.primary, theme.secondary]}
-                style={styles.submitButton}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                colors={C.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={styles.submitBtn}
               >
                 {loading ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <>
-                    <UserPlus color="#fff" size={20} style={{ marginRight: 8 }} />
-                    <Text style={styles.submitButtonText}>Create Account</Text>
-                  </>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <UserPlus size={18} color="#fff" />
+                    <Text style={styles.submitBtnText}>Create Account</Text>
+                  </View>
                 )}
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* Footer */}
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>
-                Already have an account? <Text style={styles.footerLink}>Sign In</Text>
+            {/* FOOTER */}
+            <TouchableOpacity onPress={() => navigateTo('AUTH')} style={{ marginTop: 18 }}>
+              <Text style={[styles.switchText, { color: C.sub }]}>
+                Already have an account?{' '}
+                <Text style={{ color: C.accent, fontWeight: '700' }}>Sign In</Text>
               </Text>
-              <View style={styles.securityBadge}>
-                <Shield color={theme.primary} size={16} />
-                <Text style={styles.securityText}>Your information is secure with us</Text>
-              </View>
+            </TouchableOpacity>
+
+            <View style={styles.securityBadge}>
+              <Shield size={13} color={C.sub} />
+              <Text style={{ color: C.sub, fontSize: 11 }}>Your information is secure with us</Text>
             </View>
 
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* District Selection Modal */}
-      <Modal
-        visible={showDistrictModal}
-        animationType="slide"
-        transparent={true}
-      >
+      {/* DISTRICT MODAL */}
+      <Modal visible={showDistrictModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select District</Text>
+          <View style={[styles.modalBox, { backgroundColor: isDarkMode ? '#160A2E' : '#FFF' }]}>
+            <Text style={[styles.modalTitle, { color: isDarkMode ? '#FFF' : '#120024' }]}>Select District</Text>
             <FlatList
               data={districts}
               keyExtractor={item => item}
               renderItem={({ item }) => (
-                <TouchableOpacity 
-                  style={styles.modalItem}
-                  onPress={() => {
-                    setValue('district', item, { shouldValidate: true });
-                    setShowDistrictModal(false);
-                  }}
+                <TouchableOpacity
+                  style={[styles.modalItem, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#E9E2FF' }]}
+                  onPress={() => { setValue('district', item, { shouldValidate: true }); setShowDistrictModal(false); }}
                 >
-                  <Text style={styles.modalItemText}>{item}</Text>
+                  <Text style={{ fontSize: 15, color: isDarkMode ? '#FFF' : '#120024', textAlign: 'center' }}>{item}</Text>
                 </TouchableOpacity>
               )}
             />
-            <TouchableOpacity 
-              style={styles.modalCloseButton}
+            <TouchableOpacity
+              style={[styles.modalClose, { backgroundColor: isDarkMode ? 'rgba(168,95,255,0.15)' : '#F6F2FF' }]}
               onPress={() => setShowDistrictModal(false)}
             >
-              <Text style={styles.modalCloseText}>Cancel</Text>
+              <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#A85FFF', textAlign: 'center' }}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-
-    </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: theme.background,
+  navbar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 24, paddingVertical: 18,
   },
-  scrollContent: {
-    padding: 24,
-    paddingBottom: 40,
+  navBrand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  navLogo: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
+  navBrandText: { fontSize: 18, fontWeight: '900', letterSpacing: 1 },
+  navRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  navPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-    marginTop: 20,
+  navPillText: { fontSize: 11, fontWeight: '700' },
+  navIcon: { width: 34, height: 34, borderRadius: 9, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+
+  scroll: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 16, paddingBottom: 40 },
+  scrollDesktop: { justifyContent: 'center' },
+
+  card: {
+    width: '100%', maxWidth: 520,
+    borderWidth: 1, borderRadius: 18,
+    padding: 28,
+    shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.25, shadowRadius: 30, elevation: 10,
+    marginVertical: 16,
   },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+  cardDesktop: { maxWidth: 940 },
+
+  cardHeader: { alignItems: 'center', marginBottom: 20 },
+  iconCircle: { width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  title: { fontSize: 22, fontWeight: '800', textAlign: 'center', marginBottom: 4 },
+  subtitle: { fontSize: 12, textAlign: 'center' },
+
+  banner: { borderWidth: 1, borderRadius: 8, padding: 10, marginBottom: 14 },
+
+  /* 2-column grid */
+  grid: { width: '100%' },
+  gridDesktop: { flexDirection: 'row', gap: 24 },
+  col: { width: '100%' },
+  colDesktop: { flex: 1 },
+
+  fieldGroup: { marginBottom: 14 },
+  label: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 7 },
+  inputRow: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderRadius: 10,
+    paddingHorizontal: 12, height: 46, gap: 9,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: theme.text,
-    marginBottom: 8,
+  input: { flex: 1, fontSize: 13, backgroundColor: 'transparent', borderWidth: 0 },
+  prefix: { fontSize: 12, fontWeight: '600' },
+  divider: { width: 1, height: 18, marginHorizontal: 4 },
+  errorText: { fontSize: 11, marginTop: 3 },
+
+  strengthBar: { flex: 1, height: 3, borderRadius: 2 },
+  checkItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+
+  roleRow: { flexDirection: 'row', gap: 10 },
+  roleBtn: {
+    flex: 1, borderWidth: 1, borderRadius: 10,
+    padding: 12, alignItems: 'center', minHeight: 82,
+    backgroundColor: 'transparent',
   },
-  subtitle: {
-    fontSize: 15,
-    color: theme.placeholder,
-    textAlign: 'center',
-  },
-  errorBanner: {
-    backgroundColor: '#FEE2E2',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-  },
-  errorBannerText: {
-    color: theme.error,
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  form: {
-    gap: 20,
-  },
-  inputGroup: {
-    gap: 8,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: theme.text,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.border,
-    height: 56,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  inputError: {
-    borderColor: theme.error,
-  },
-  inputIcon: {
-    marginLeft: 16,
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    height: '100%',
-    fontSize: 15,
-    color: theme.text,
-  },
-  phonePrefix: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  phonePrefixText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: theme.text,
-  },
-  divider: {
-    width: 1,
-    height: 24,
-    backgroundColor: theme.border,
-    marginHorizontal: 12,
-  },
-  eyeIcon: {
-    padding: 16,
-  },
-  errorText: {
-    color: theme.error,
-    fontSize: 12,
-    marginTop: -4,
-  },
-  strengthContainer: {
-    marginTop: 4,
-    gap: 8,
-  },
-  strengthLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.primary,
-  },
-  strengthBars: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  strengthBar: {
-    flex: 1,
-    height: 4,
-    backgroundColor: theme.border,
-    borderRadius: 2,
-  },
-  strengthChecks: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 4,
-  },
-  checkItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  checkText: {
-    fontSize: 12,
-    color: theme.placeholder,
-  },
-  cardsRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  accountCard: {
-    flex: 1,
-    backgroundColor: theme.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.border,
-    minHeight: 120,
-    overflow: 'hidden',
-  },
-  accountCardSelected: {
-    borderColor: 'transparent',
-  },
-  accountCardContent: {
-    padding: 12,
-    flex: 1,
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  cardDesc: {
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  submitButton: {
-    height: 56,
-    borderRadius: 12,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  footer: {
-    alignItems: 'center',
-    marginTop: 16,
-    gap: 16,
-  },
-  footerText: {
-    fontSize: 14,
-    color: theme.text,
-  },
-  footerLink: {
-    color: theme.primary,
-    fontWeight: '700',
-  },
-  securityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  securityText: {
-    fontSize: 12,
-    color: theme.placeholder,
-    fontWeight: '500',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: '70%',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.text,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  modalItem: {
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-  },
-  modalItemText: {
-    fontSize: 16,
-    color: theme.text,
-    textAlign: 'center',
-  },
-  modalCloseButton: {
-    marginTop: 16,
-    padding: 16,
-    backgroundColor: theme.background,
-    borderRadius: 12,
-  },
-  modalCloseText: {
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: theme.error,
-  },
+
+  submitBtn: { height: 50, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginTop: 2 },
+  submitBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  switchText: { fontSize: 13, textAlign: 'center' },
+  securityBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 12 },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalBox: { borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 22, maxHeight: '70%' },
+  modalTitle: { fontSize: 17, fontWeight: 'bold', marginBottom: 14, textAlign: 'center' },
+  modalItem: { paddingVertical: 13, borderBottomWidth: 1 },
+  modalClose: { marginTop: 10, padding: 13, borderRadius: 10 },
 });
