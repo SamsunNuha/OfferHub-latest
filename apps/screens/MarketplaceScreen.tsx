@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useAppContext } from '../shared/AppContext';
 import { useDimensions } from '../hooks/useDimensions';
-import { Star, ShoppingCart, Search } from 'lucide-react-native';
+import { Star, ShoppingCart, Search, Check } from 'lucide-react-native';
 
 const IMAGE_ASSETS: Record<string, any> = {
   "Keells": require('../assets/img_groceries_bundle.jpg'),
@@ -34,12 +34,30 @@ function getProductImage(productOrStore: any): any {
 export const MarketplaceScreen: React.FC = () => {
   const { 
     isDarkMode, products, addToCart, navigateTo, 
-    setSelectedProduct 
+    setSelectedProduct, currentUser
   } = useAppContext();
 
   const { gridColumns, contentWidth, padding } = useDimensions();
   const [selectedCat, setSelectedCat] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [addedIds, setAddedIds] = useState<Set<number>>(new Set());
+
+  const handleAddToCart = (item: any) => {
+    // Must be signed in — if not, redirect to auth
+    if (!currentUser) {
+      navigateTo('AUTH');
+      return;
+    }
+    addToCart(item);
+    setAddedIds(prev => new Set(prev).add(item.id));
+    setTimeout(() => {
+      setAddedIds(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }, 1500);
+  };
 
   const categories = [
     "ALL", "Supermarkets", "Electronics", "Fashion", "Restaurants", "Hotels",
@@ -166,10 +184,16 @@ export const MarketplaceScreen: React.FC = () => {
                     </View>
                     
                     <TouchableOpacity 
-                      style={[styles.cartAddBtn, { backgroundColor: colors.primary }]}
-                      onPress={() => addToCart(item)}
+                      style={[
+                        styles.cartAddBtn,
+                        { backgroundColor: addedIds.has(item.id) ? '#00C853' : colors.primary }
+                      ]}
+                      onPress={() => handleAddToCart(item)}
                     >
-                      <ShoppingCart size={14} color={colors.background} />
+                      {addedIds.has(item.id)
+                        ? <Check size={14} color="#FFF" strokeWidth={3} />
+                        : <ShoppingCart size={14} color={colors.background} />
+                      }
                     </TouchableOpacity>
                   </View>
                 </View>

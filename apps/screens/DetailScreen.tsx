@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   StyleSheet, Text, View, ScrollView, Image, 
   TouchableOpacity, Dimensions 
 } from 'react-native';
 import { useAppContext } from '../shared/AppContext';
-import { ArrowLeft, Star, ShoppingCart, Heart, ShieldCheck } from 'lucide-react-native';
+import { ArrowLeft, Star, ShoppingCart, Heart, ShieldCheck, Check } from 'lucide-react-native';
 
 const IMAGE_ASSETS: Record<string, any> = {
   "Keells": require('../assets/img_groceries_bundle.jpg'),
@@ -33,8 +33,22 @@ function getProductImage(productOrStore: any): any {
 export const DetailScreen: React.FC = () => {
   const { 
     isDarkMode, selectedProduct, selectedOffer, 
-    addToCart, navigateTo, toggleFavorite, isFavorite, products, setSelectedProduct 
+    addToCart, navigateTo, toggleFavorite, isFavorite, products, setSelectedProduct, currentUser
   } = useAppContext();
+
+  const [isAdded, setIsAdded] = useState(false);
+
+  const handleAddToCart = () => {
+    if (!selectedProduct) return;
+    // Must be signed in — if not, redirect to auth
+    if (!currentUser) {
+      navigateTo('AUTH');
+      return;
+    }
+    addToCart(selectedProduct);
+    setIsAdded(true);
+    setTimeout(() => setIsAdded(false), 1500);
+  };
 
   // Color mapping
   const colors = isDarkMode ? {
@@ -178,11 +192,34 @@ export const DetailScreen: React.FC = () => {
         {/* BUY BUTTON */}
         {!isOffer && selectedProduct && (
           <TouchableOpacity 
-            style={[styles.buyBtn, { backgroundColor: colors.primary }]}
-            onPress={() => addToCart(selectedProduct)}
+            style={[
+              styles.buyBtn,
+              { 
+                backgroundColor: !currentUser 
+                  ? '#5E35B1'
+                  : isAdded ? '#00C853' : colors.primary 
+              }
+            ]}
+            onPress={handleAddToCart}
           >
-            <ShoppingCart size={18} color={colors.background} style={{ marginRight: 8 }} />
-            <Text style={[styles.buyBtnText, { color: colors.background }]}>Add to Shopping Cart</Text>
+            {!currentUser ? (
+              <>
+                <ShoppingCart size={18} color="#FFF" style={{ marginRight: 8 }} />
+                <Text style={[styles.buyBtnText, { color: '#FFF' }]}>
+                  🔒 Sign In to Add to Cart
+                </Text>
+              </>
+            ) : isAdded ? (
+              <>
+                <Check size={18} color="#FFF" strokeWidth={3} style={{ marginRight: 8 }} />
+                <Text style={[styles.buyBtnText, { color: '#FFF' }]}>✓ Added to Cart!</Text>
+              </>
+            ) : (
+              <>
+                <ShoppingCart size={18} color={colors.background} style={{ marginRight: 8 }} />
+                <Text style={[styles.buyBtnText, { color: colors.background }]}>Add to Shopping Cart</Text>
+              </>
+            )}
           </TouchableOpacity>
         )}
 

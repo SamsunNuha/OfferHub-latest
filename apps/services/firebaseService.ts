@@ -196,6 +196,15 @@ export const FirebaseService = {
           return { success: false, message: "An account with this email already exists." };
         }
 
+        // Check phone uniqueness if provided
+        if (phoneNumber) {
+          const phoneQuery = query(collection(fbDb, 'users'), where('phoneNumber', '==', phoneNumber));
+          const phoneSnap = await getDocs(phoneQuery);
+          if (!phoneSnap.empty) {
+            return { success: false, message: "An account with this phone number already exists." };
+          }
+        }
+
         await createUserWithEmailAndPassword(fbAuth, cleanedEmail, password);
         if (fbAuth.currentUser) {
           await updateProfile(fbAuth.currentUser, { displayName: name.trim() });

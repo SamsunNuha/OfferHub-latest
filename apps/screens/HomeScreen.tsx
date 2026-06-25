@@ -1,261 +1,315 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  StyleSheet, Text, View, ScrollView, Image, 
-  TouchableOpacity, Dimensions, ActivityIndicator,
-  RefreshControl, TextInput
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  StyleSheet, Text, View, ScrollView, Image,
+  TouchableOpacity, Dimensions, TextInput, Modal,
+  Platform, useWindowDimensions, Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAppContext } from '../shared/AppContext';
-import { useDimensions } from '../hooks/useDimensions';
-import { Heart, Search, Smartphone, ShoppingCart, Sparkles, User, MapPin, Home, Store, Map, Award, Bell } from 'lucide-react-native';
+import {
+  Home, Tag, Zap, Star, User, Package, Heart, MapPin,
+  ShoppingCart, Bell, Search, ChevronRight, Store,
+  Settings, Moon, Sun, HelpCircle, MessageSquare,
+  Award, Truck, LogIn, X, TrendingUp, Clock,
+} from 'lucide-react-native';
 
-const { width } = Dimensions.get('window');
+const { width: SCREEN_W } = Dimensions.get('window');
 
 const IMAGE_ASSETS: Record<string, any> = {
-  "Keells": require('../assets/img_groceries_bundle.jpg'),
-  "Cargills": require('../assets/img_shopping_banner.jpg'),
-  "Singer": require('../assets/img_electronics_promo.jpg'),
-  "Softlogic": require('../assets/img_electronics_promo.jpg'),
-  "Daraz": require('../assets/img_shopping_banner.jpg'),
-  "Fashion Bug": require('../assets/img_beauty_pack.jpg'),
-  "Odel": require('../assets/img_shoes_nike.jpg'),
-  "Burger King": require('../assets/img_shopping_banner.jpg'),
-  "default": require('../assets/img_shopping_banner.jpg')
+  "Keells":       require('../assets/img_groceries_bundle.jpg'),
+  "Cargills":     require('../assets/img_shopping_banner.jpg'),
+  "Singer":       require('../assets/img_electronics_promo.jpg'),
+  "Softlogic":    require('../assets/img_electronics_promo.jpg'),
+  "Daraz":        require('../assets/img_shopping_banner.jpg'),
+  "Fashion Bug":  require('../assets/img_beauty_pack.jpg'),
+  "Odel":         require('../assets/img_shoes_nike.jpg'),
+  "Burger King":  require('../assets/img_shopping_banner.jpg'),
+  "default":      require('../assets/img_shopping_banner.jpg'),
 };
 
-function getProductImage(productOrStore: any): any {
-  if (productOrStore && typeof productOrStore === 'object' && productOrStore.images) {
-    return { uri: productOrStore.images };
-  }
-  const storeName = typeof productOrStore === 'string' ? productOrStore : (productOrStore?.storeName || '');
-  for (const key of Object.keys(IMAGE_ASSETS)) {
-    if (storeName.toLowerCase().includes(key.toLowerCase())) {
-      return IMAGE_ASSETS[key];
-    }
+function getImg(key: any): any {
+  if (key && key.images) return { uri: key.images };
+  const name = typeof key === 'string' ? key : (key?.storeName || '');
+  for (const k of Object.keys(IMAGE_ASSETS)) {
+    if (name.toLowerCase().includes(k.toLowerCase())) return IMAGE_ASSETS[k];
   }
   return IMAGE_ASSETS.default;
 }
 
+// ─── Sidebar nav items ────────────────────────────────────────────────────────
+const NAV_SECTIONS = [
+  {
+    label: null,
+    items: [
+      { id: 'HOME',       label: 'Home',        Icon: Home    },
+      { id: 'CATEGORIES', label: 'Categories',  Icon: Tag     },
+      { id: 'OFFERS',     label: 'All Offers',  Icon: Award   },
+      { id: 'FLASH',      label: 'Flash Deals', Icon: Zap,    badge: 'LIVE' },
+      { id: 'NEW',        label: 'New Arrivals',Icon: TrendingUp },
+      { id: 'TOPRATED',   label: 'Top Rated',   Icon: Star    },
+    ],
+  },
+  {
+    label: 'MY ACCOUNT',
+    items: [
+      { id: 'PROFILE',    label: 'Profile',     Icon: User    },
+      { id: 'ORDERS',     label: 'My Orders',   Icon: Package },
+      { id: 'WISHLIST',   label: 'Wishlist',    Icon: Heart   },
+      { id: 'REVIEWS',    label: 'My Reviews',  Icon: MessageSquare },
+      { id: 'ADDRESSES',  label: 'Addresses',   Icon: MapPin  },
+    ],
+  },
+  {
+    label: 'SHOPPING',
+    items: [
+      { id: 'CART',       label: 'Cart',        Icon: ShoppingCart },
+      { id: 'MAP',        label: 'Track Order', Icon: Truck   },
+      { id: 'COUPONS',    label: 'Coupons',     Icon: Tag     },
+    ],
+  },
+  {
+    label: 'SUPPORT',
+    items: [
+      { id: 'HELP',       label: 'Help Center', Icon: HelpCircle   },
+      { id: 'CONTACT',    label: 'Contact Us',  Icon: MessageSquare},
+      { id: 'FAQ',        label: 'FAQ',         Icon: HelpCircle   },
+    ],
+  },
+];
+
+// ─── Timer helper ─────────────────────────────────────────────────────────────
+function fmtTimer(s: number) {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return { h: h.toString().padStart(2, '0'), m: m.toString().padStart(2, '0'), s: sec.toString().padStart(2, '0') };
+}
+
+// ─── Colours ──────────────────────────────────────────────────────────────────
+const C = {
+  bg:       '#FFFFFF', // white background
+  sidebar:  '#F6F2FF', // light purple sidebar
+  surface:  '#F0E6FF', // light surface for cards
+  card:     '#FFFFFF', // white cards
+  border:   '#E0D7FF', // subtle border
+  accent:   '#A865C9', // primary light purple
+  accentSoft:'rgba(168,95,255,0.15)', // soft accent
+  live:     '#FF3D57', // keep existing live colour
+  warn:     '#FF9800',
+  success:  '#00E676',
+  text:     '#120024', // dark text for readability
+  sub:      '#5A4A7A', // secondary text
+  gradient: ['#A865C9', '#BF77F6'] as [string, string],
+  gradientHero: ['#A865C9', '#F6F2FF'] as [string, string],
+};
+
+// ─── BRAND COLOUR PALETTE ─────────────────────────────────────────────────────
+const BRAND_COLORS = [
+  '#E53935','#43A047','#1E88E5','#FB8C00','#8E24AA',
+  '#00ACC1','#F4511E','#D81B60','#00897B','#3949AB',
+];
+
 export const HomeScreen: React.FC = () => {
-  const { 
-    isDarkMode, currentUser, offers, brands, products, cart, 
-    flashSaleSeconds, flashSaleStock, claimFlashSaleItem, 
-    liveAuctions, placeAuctionBid, 
-    addToCart, navigateTo, setSelectedProduct, setSelectedOffer, 
-    chatLogs, sendChatMessage, aiSearching, bannerNotification, pushLogs 
+  const {
+    isDarkMode, toggleDarkMode, currentUser, offers, brands, products,
+    cart, flashSaleSeconds, flashSaleStock, claimFlashSaleItem,
+    liveAuctions, placeAuctionBid, addToCart, navigateTo,
+    setSelectedProduct, setSelectedOffer,
+    pushLogs, bannerNotification,
   } = useAppContext();
-  const cartCount = Object.values(cart).reduce((sum, q) => sum + q, 0);
 
-  const { isMobile, gridColumns, contentWidth } = useDimensions();
+  const { width: WIN_W } = useWindowDimensions();
+  const IS_DESKTOP = Platform.OS === 'web' && WIN_W > 900;
+  const SIDEBAR_W = 200;
 
-  const [refreshing, setRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    // Simulate network refresh
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1500);
-  }, []);
-
-  // Banner image slider auto slide
+  const [activeScreen, setActiveScreen] = useState('HOME');
   const [activeBanner, setActiveBanner] = useState(0);
+  const [searchQ, setSearchQ] = useState('');
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [addedIds, setAddedIds] = useState<Set<number>>(new Set());
+
+  const cartCount = Object.values(cart).reduce((s, q) => s + q, 0);
+  const notifCount = pushLogs?.length ?? 0;
+
   const banners = [
-    { text: "Lanka Super Savers", desc: "Save up to 40% on groceries!", store: "Keells" },
-    { text: "Grand Electronic Fair", desc: "Singer & Abans Special deals", store: "Singer" },
-    { text: "Fashion Week Carnivals", desc: "Odel VIP brand selections", store: "Odel" }
+    { title: 'Fashion Week Carnivals', sub: 'Odel VIP brand selections\nUp to 50% OFF on top brands', store: 'Odel', tag: 'FEATURED' },
+    { title: 'Grand Electronic Fair', sub: 'Singer & Abans Special deals\nLKR 5,000 off on TVs & Fridges', store: 'Singer', tag: 'HOT DEAL' },
+    { title: 'Lanka Super Savers', sub: 'Save up to 40% on groceries!\nFresh produce every day', store: 'Keells', tag: 'MEGA SALE' },
   ];
 
   useEffect(() => {
-    const slideTimer = setInterval(() => {
-      setActiveBanner(prev => (prev + 1) % banners.length);
-    }, 4500);
-    return () => clearInterval(slideTimer);
+    const t = setInterval(() => setActiveBanner(p => (p + 1) % banners.length), 4500);
+    return () => clearInterval(t);
   }, []);
 
-  const formatTimer = (secs: number) => {
-    const mins = Math.floor(secs / 60);
-    const remainingSecs = secs % 60;
-    return `${mins.toString().padStart(2, '0')}:${remainingSecs.toString().padStart(2, '0')}`;
+  const tm = fmtTimer(flashSaleSeconds);
+  const featuredOffers = offers.filter(o => o.isFeatured).slice(0, 5);
+  const allDeals = offers.slice(0, 6);
+  const aiPicks = products.slice(0, 8);
+  const brandList = brands.slice(0, 11);
+
+  const handleNav = (id: string) => {
+    setActiveScreen(id);
+    navigateTo(id);
   };
 
-  // Color tokens
-  const colors = isDarkMode ? {
-    background: '#0C0717',
-    surface: '#160F2B',
-    surfaceVariant: '#22183D',
-    border: '#3F2D6B',
-    primary: '#C78DFF',
-    secondary: '#8E24AA',
-    text: '#FFFFFF',
-    subText: '#B0A2C9',
-  } : {
-    background: '#F6F2FF',
-    surface: '#FFFFFF',
-    surfaceVariant: '#EDE5FC',
-    border: '#D1C4E9',
-    primary: '#7C4DFF',
-    secondary: '#6200EA',
-    text: '#120024',
-    subText: '#6D5C80',
+  const handleAddToCart = (product: any) => {
+    if (!currentUser) { navigateTo('AUTH'); return; }
+    addToCart(product);
+    setAddedIds(prev => new Set(prev).add(product.id));
+    setTimeout(() => setAddedIds(prev => { const n = new Set(prev); n.delete(product.id); return n; }), 1500);
   };
 
-  const featuredOffers = offers.filter(o => o.isFeatured);
-  const promoDeals = offers.filter(o => !o.isFeatured);
-  
-  // Filter products for AI picks (e.g. premium items)
-  const aiPicks = products.slice(0, 10);
+  // ── SIDEBAR ────────────────────────────────────────────────────────────────
+  const Sidebar = () => (
+    <View style={styles.sidebar}>
+      {/* Logo */}
+      <TouchableOpacity style={styles.sidebarLogo} onPress={() => handleNav('HOME')}>
+        <LinearGradient colors={C.gradient} style={styles.logoIcon} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <ShoppingCart size={16} color="#fff" />
+        </LinearGradient>
+        <View>
+          <Text style={styles.logoTitle}>OfferHub</Text>
+          <Text style={styles.logoSub}>Sri Lanka</Text>
+        </View>
+      </TouchableOpacity>
 
-  return (
-    <ScrollView 
-      style={{ flex: 1, backgroundColor: colors.background }}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />
-      }
-    >
-      {/* HOME HEADER */}
-      <View style={styles.homeHeader}>
-  <TouchableOpacity onPress={() => navigateTo('HOME')}>
-    <Image source={require('../assets/logo.png')} style={styles.logoHeader} resizeMode="contain" />
-  </TouchableOpacity>
-  <View style={styles.homeNav}>
-    <TouchableOpacity onPress={() => navigateTo('HOME')} style={styles.navIconBtn}>
-      <Home size={20} color={colors.text} />
-    </TouchableOpacity>
-    <TouchableOpacity onPress={() => navigateTo('MARKETPLACE')} style={styles.navIconBtn}>
-      <Store size={20} color={colors.text} />
-    </TouchableOpacity>
-    <TouchableOpacity onPress={() => navigateTo('MAP')} style={styles.navIconBtn}>
-      <Map size={20} color={colors.text} />
-    </TouchableOpacity>
-    <TouchableOpacity onPress={() => navigateTo('LOYALTY')} style={styles.navIconBtn}>
-      <Award size={20} color={colors.text} />
-    </TouchableOpacity>
-    <TouchableOpacity onPress={() => navigateTo('PROFILE')} style={styles.navIconBtn}>
-      <User size={20} color={colors.text} />
-    </TouchableOpacity>
-  </View>
-  {/* Search Bar */}
-  <View style={styles.searchContainerHeader}>
-    <Search color={colors.subText} size={18} style={{ marginLeft: 8 }} />
-    <TextInput
-      placeholder="Search offers..."
-      placeholderTextColor={colors.subText}
-      style={styles.searchInputHeader}
-      onChangeText={(text) => {}}
-    />
-  </View>
-  {/* Notification Icon */}
-  <TouchableOpacity style={styles.navIconBtn} onPress={() => {}}
-    >
-    <Bell size={20} color={colors.text} />
-  </TouchableOpacity>
-  {/* Cart Icon with badge */}
-  <TouchableOpacity style={styles.navIconBtn} onPress={() => navigateTo('CART')}>
-    <ShoppingCart size={20} color={colors.text} />
-    {cartCount > 0 && (
-      <View style={styles.cartBadgeHeader}>
-        <Text style={styles.cartBadgeTextHeader}>{cartCount}</Text>
-      </View>
-    )}
-  </TouchableOpacity>
-</View>
-      <View style={[styles.mainContainer, { maxWidth: contentWidth }]}>
-        
-        {/* WELCOME BLOCK */}
-        <View style={styles.welcomeRow}>
-          <View>
-            <Text style={[styles.welcomeSub, { color: colors.subText }]}>Ayubowan! 👋</Text>
-            <Text style={[styles.welcomeTitle, { color: colors.text }]}>
-              {currentUser ? currentUser.name : "Welcome Guest"}
-            </Text>
+      {/* Nav */}
+      <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+        {NAV_SECTIONS.map((sec, si) => (
+          <View key={si} style={{ marginBottom: 8 }}>
+            {sec.label && <Text style={styles.navSectionLabel}>{sec.label}</Text>}
+            {sec.items.map(item => {
+              const active = activeScreen === item.id;
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[styles.navItem, active && styles.navItemActive]}
+                  onPress={() => handleNav(item.id)}
+                >
+                  <item.Icon size={16} color={active ? C.accent : C.sub} />
+                  <Text style={[styles.navItemText, { color: active ? C.accent : C.sub }]}>{item.label}</Text>
+                  {(item as any).badge && (
+                    <View style={styles.liveBadge}>
+                      <Text style={styles.liveBadgeText}>{(item as any).badge}</Text>
+                    </View>
+                  )}
+                  {item.id === 'WISHLIST' && (
+                    <View style={styles.countBadge}><Text style={styles.countBadgeText}>12</Text></View>
+                  )}
+                  {item.id === 'CART' && cartCount > 0 && (
+                    <View style={styles.countBadge}><Text style={styles.countBadgeText}>{cartCount}</Text></View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
-          <TouchableOpacity 
-            style={[styles.districtBadge, { backgroundColor: colors.surfaceVariant, borderColor: colors.border }]}
-            onPress={() => {}}
-          >
-            <MapPin size={14} color={colors.primary} />
-            <Text style={[styles.districtText, { color: colors.text }]}>
-              {currentUser?.district || "Colombo"}
-            </Text>
+        ))}
+
+        {/* Become Seller CTA */}
+        <LinearGradient colors={['#3E1D7A', '#6C3DBE']} style={styles.sellerCta} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <Store size={18} color="#fff" style={{ marginBottom: 4 }} />
+          <Text style={styles.sellerCtaTitle}>Become a Seller</Text>
+          <Text style={styles.sellerCtaSub}>Grow your business with OfferHub</Text>
+          <TouchableOpacity style={styles.sellerCtaBtn} onPress={() => handleNav('MERCHANT')}>
+            <Text style={styles.sellerCtaBtnText}>Join Now</Text>
+          </TouchableOpacity>
+        </LinearGradient>
+
+        {/* Dark mode toggle */}
+        <TouchableOpacity style={styles.darkToggle} onPress={toggleDarkMode}>
+          {isDarkMode
+            ? <Sun size={15} color={C.accent} />
+            : <Moon size={15} color={C.accent} />}
+          <Text style={styles.darkToggleText}>Dark Mode</Text>
+          <View style={[styles.toggleTrack, isDarkMode && { backgroundColor: C.accent }]}>
+            <View style={[styles.toggleThumb, isDarkMode && { alignSelf: 'flex-end' }]} />
+          </View>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+
+  // ── MAIN CONTENT ───────────────────────────────────────────────────────────
+  const Content = () => (
+    <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+
+      {/* ── Hero Banner ── */}
+      <View style={styles.heroBanner}>
+        <Image source={getImg(banners[activeBanner].store)} style={StyleSheet.absoluteFill as any} resizeMode="cover" />
+        <LinearGradient colors={['transparent', 'rgba(9,5,15,0.9)']} style={StyleSheet.absoluteFill as any} />
+        <View style={styles.heroContent}>
+          <View style={styles.heroTag}><Text style={styles.heroTagText}>{banners[activeBanner].tag}</Text></View>
+          <Text style={styles.heroTitle}>{banners[activeBanner].title}</Text>
+          <Text style={styles.heroSub}>{banners[activeBanner].sub}</Text>
+          <TouchableOpacity style={styles.heroBtn} onPress={() => navigateTo('OFFERS')}>
+            <Text style={styles.heroBtnText}>Shop Now</Text>
+            <ChevronRight size={14} color="#fff" />
           </TouchableOpacity>
         </View>
-
-        {/* HERO BANNER SLIDER */}
-        <View style={[styles.heroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Image 
-            source={getProductImage(banners[activeBanner].store)} 
-            style={styles.heroImage}
-            resizeMode="cover"
-          />
-          <View style={styles.heroOverlay}>
-            <View style={[styles.indicatorPill, { backgroundColor: colors.secondary }]}>
-              <Text style={styles.indicatorText}>FEATURED</Text>
-            </View>
-            <Text style={styles.heroTitle}>{banners[activeBanner].text}</Text>
-            <Text style={styles.heroDesc}>{banners[activeBanner].desc}</Text>
-            
-            <View style={styles.slideIndicators}>
-              {banners.map((_, i) => (
-                <View 
-                  key={i} 
-                  style={[
-                    styles.dot, 
-                    { backgroundColor: i === activeBanner ? colors.primary : 'rgba(255,255,255,0.4)' }
-                  ]} 
-                />
-              ))}
-            </View>
-          </View>
+        {/* Slide arrows */}
+        <TouchableOpacity style={[styles.slideArrow, { left: 10 }]} onPress={() => setActiveBanner(p => (p - 1 + banners.length) % banners.length)}>
+          <Text style={styles.slideArrowText}>‹</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.slideArrow, { right: 10 }]} onPress={() => setActiveBanner(p => (p + 1) % banners.length)}>
+          <Text style={styles.slideArrowText}>›</Text>
+        </TouchableOpacity>
+        {/* Dots */}
+        <View style={styles.dotRow}>
+          {banners.map((_, i) => (
+            <TouchableOpacity key={i} onPress={() => setActiveBanner(i)}>
+              <View style={[styles.dot, i === activeBanner && styles.dotActive]} />
+            </TouchableOpacity>
+          ))}
         </View>
+      </View>
 
-        {/* REAL-TIME FLASH DEALS */}
-        <View style={[styles.sectionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.sectionHeaderRow}>
-            <View style={styles.row}>
-              <Text style={[styles.sectionLabelTitle, { color: colors.primary }]}>⚡ Real-time Flash Deals</Text>
-              <View style={[styles.limitBadge, { backgroundColor: colors.primary }]}>
-                <Text style={styles.limitBadgeText}>LIMITED</Text>
-              </View>
+      {/* ── Flash Deals + Live Auctions Row ── */}
+      <View style={[styles.twoCol, IS_DESKTOP && { flexDirection: 'row', gap: 12 }]}>
+
+        {/* Flash Deals */}
+        <View style={[styles.sectionCard, IS_DESKTOP && { flex: 1 }]}>
+          <View style={styles.sectionHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.sectionEmoji}>⚡</Text>
+              <Text style={styles.sectionTitle}>Real-time Flash Deals</Text>
+              <View style={styles.livePill}><Text style={styles.livePillText}>LIVE</Text></View>
             </View>
-            <View style={[styles.timerContainer, { borderColor: colors.primary }]}>
-              <Text style={[styles.timerText, { color: colors.primary }]}>⏱️ {formatTimer(flashSaleSeconds)}</Text>
-            </View>
+            <TouchableOpacity onPress={() => navigateTo('FLASH')}>
+              <Text style={styles.viewAll}>View All →</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={[styles.flashDescText, { color: colors.subText }]}>Claim limited flyer deals using wallet cashback. Express courier dispatched!</Text>
-          
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.flashRow}>
-            {[
-              { id: 1, name: "Keells Samba Rice 5kg Basket", price: 450.0, emoji: "🌾", maxStock: 3 },
-              { id: 2, name: "Singer Heavy Kettle 1.8L", price: 1850.0, emoji: "⚡🔌", maxStock: 5 },
-              { id: 3, name: "Cargills Ceylon Tea 400g", price: 620.0, emoji: "🍃🍵", maxStock: 2 }
-            ].map(item => {
-              const stock = flashSaleStock[item.id] || 0;
-              const progress = stock / item.maxStock;
-              return (
-                <View key={item.id} style={[styles.flashItemBox, { backgroundColor: colors.surfaceVariant, borderColor: colors.border }]}>
-                  <View style={styles.flashEmojiBox}>
-                    <Text style={{ fontSize: 24 }}>{item.emoji}</Text>
-                  </View>
-                  <Text style={[styles.flashItemName, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
-                  <Text style={[styles.flashItemPrice, { color: colors.primary }]}>LKR {item.price.toFixed(0)}</Text>
-                  
-                  {/* Stock Bar */}
-                  <View style={styles.stockBarBg}>
-                    <View style={[styles.stockBarFill, { width: `${progress * 100}%`, backgroundColor: stock <= 1 ? '#D50000' : colors.primary }]} />
-                  </View>
-                  <Text style={[styles.stockText, { color: stock <= 1 ? '#D50000' : colors.subText }]}>
-                    {stock > 0 ? `Only ${stock} left!` : "SOLD OUT!"}
-                  </Text>
+          <Text style={styles.sectionSub}>Claim limited flyer deals using wallet cashback. Express courier dispatched!</Text>
 
-                  <TouchableOpacity 
-                    style={[styles.flashBuyBtn, { backgroundColor: stock > 0 ? colors.primary : '#444' }]}
-                    disabled={stock <= 0}
-                    onPress={() => claimFlashSaleItem(item.id, item.name, item.price)}
-                  >
-                    <Text style={{ color: colors.background, fontSize: 10, fontWeight: 'bold' }}>
-                      {stock > 0 ? "Claim Now" : "Sold Out"}
-                    </Text>
+          {/* Countdown */}
+          <View style={styles.timerRow}>
+            {[{ val: tm.h, label: 'HRS' }, { val: tm.m, label: 'MIN' }, { val: tm.s, label: 'SEC' }].map((t, i) => (
+              <React.Fragment key={i}>
+                <View style={styles.timerBox}>
+                  <Text style={styles.timerNum}>{t.val}</Text>
+                  <Text style={styles.timerLabel}>{t.label}</Text>
+                </View>
+                {i < 2 && <Text style={styles.timerColon}>:</Text>}
+              </React.Fragment>
+            ))}
+          </View>
+
+          {/* Flash items */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+            {(featuredOffers.length ? featuredOffers : allDeals).map((item: any, idx) => {
+              const stock = flashSaleStock[idx + 1] ?? 0;
+              return (
+                <View key={item.id || idx} style={styles.flashCard}>
+                  <Image source={getImg(item)} style={styles.flashImg} resizeMode="cover" />
+                  {item.discountPercent && (
+                    <View style={styles.discBadge}><Text style={styles.discBadgeText}>{item.discountPercent}%</Text></View>
+                  )}
+                  <Text style={styles.flashName} numberOfLines={2}>{item.title || item.name}</Text>
+                  <Text style={styles.flashStore}>{item.storeName}</Text>
+                  <Text style={styles.flashPrice}>LKR {Math.floor(item.originalPrice || item.discountedPrice || 0).toLocaleString()}</Text>
+                  <Text style={styles.flashStock}>Only {stock} left!</Text>
+                  <TouchableOpacity style={styles.claimBtn} onPress={() => claimFlashSaleItem(idx + 1, item.title || item.name, item.discountedPrice || 0)}>
+                    <Text style={styles.claimBtnText}>Claim Now</Text>
                   </TouchableOpacity>
                 </View>
               );
@@ -263,606 +317,382 @@ export const HomeScreen: React.FC = () => {
           </ScrollView>
         </View>
 
-        {/* CROWDSOURCED LIVE AUCTIONS */}
-        <View style={[styles.sectionCard, { backgroundColor: 'rgba(142,36,170,0.06)', borderColor: '#8E24AA', borderWidth: 1 }]}>
-          <View style={styles.sectionHeaderRow}>
-            <View style={styles.row}>
-              <Text style={styles.auctionHeaderTitle}>🔥 Crowdsourced Live Auctions</Text>
-              <View style={styles.liveBadge}>
-                <Text style={styles.liveBadgeText}>LIVE BID</Text>
-              </View>
+        {/* Live Auctions */}
+        <View style={[styles.sectionCard, IS_DESKTOP && { width: 320 }]}>
+          <View style={styles.sectionHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.sectionEmoji}>🔥</Text>
+              <Text style={styles.sectionTitle}>Live Auctions</Text>
+              <View style={[styles.livePill, { backgroundColor: '#FF3D57' }]}><Text style={styles.livePillText}>LIVE</Text></View>
             </View>
-            <Text style={{ fontSize: 10, color: '#C78DFF', fontWeight: 'bold' }}>Sri Lanka VIP</Text>
+            <TouchableOpacity onPress={() => navigateTo('AUCTIONS')}>
+              <Text style={styles.viewAll}>View All Auctions →</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={{ fontSize: 10, color: colors.subText, marginBottom: 12 }}>Compete in real-time. LKR -500 deposit per bid. Extend time +20s.</Text>
+          <Text style={styles.sectionSub}>Compete in real-time. LKR -500 deposit per bid. Extend time +20s.</Text>
 
-          <View style={{ gap: 8 }}>
-            {liveAuctions.map(item => (
-              <View key={item.id} style={[styles.auctionRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <View style={styles.auctionIconBox}>
-                  <Text style={{ fontSize: 20 }}>{item.iconEmoji}</Text>
-                </View>
-                
-                <View style={{ flex: 1, marginLeft: 10 }}>
-                  <Text style={[styles.auctionItemTitle, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
-                  <Text style={{ color: colors.subText, fontSize: 8 }}>{item.storeName}</Text>
-                  
-                  <View style={[styles.row, { marginTop: 4 }]}>
-                    <Text style={{ color: colors.primary, fontSize: 11, fontWeight: 'bold' }}>Bid: LKR {item.currentBid.toLocaleString()}</Text>
-                    <Text style={{ color: colors.subText, fontSize: 9, marginLeft: 8 }}>by {item.highestBidder}</Text>
+          {liveAuctions.map(a => (
+            <View key={a.id} style={styles.auctionRow}>
+              <Image source={getImg(a.storeName)} style={styles.auctionImg} resizeMode="cover" />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.auctionTitle} numberOfLines={1}>{a.title}</Text>
+                <Text style={styles.auctionBidder} numberOfLines={1}>by {a.highestBidder}</Text>
+                <Text style={styles.auctionLabel}>Current Bid</Text>
+                <Text style={styles.auctionBid}>LKR {Math.floor(a.currentBid).toLocaleString()}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.bidBtn, a.isClosed && { backgroundColor: '#444' }]}
+                onPress={() => !a.isClosed && placeAuctionBid(a.id)}
+              >
+                <Text style={styles.bidBtnText}>{a.isClosed ? 'CLOSED' : 'Bid +1K'}</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* ── Premium Brands ── */}
+      <View style={styles.sectionCard}>
+        <View style={styles.sectionHeader}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.sectionEmoji}>🏆</Text>
+            <Text style={styles.sectionTitle}>Premium Sri Lankan Brands</Text>
+          </View>
+          <TouchableOpacity onPress={() => navigateTo('BRANDS')}>
+            <Text style={styles.viewAll}>View All Brands →</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+          {(brandList.length > 0 ? brandList : [
+            { id: 1, name: 'Abans', category: 'Electronics' },
+            { id: 2, name: 'Keells', category: 'Supermarkets' },
+            { id: 3, name: 'Cargills', category: 'Supermarkets' },
+            { id: 4, name: 'Odel', category: 'Fashion' },
+            { id: 5, name: 'Singer', category: 'Electronics' },
+            { id: 6, name: 'Daraz', category: 'Online Store' },
+            { id: 7, name: 'Bata', category: 'Footwear' },
+          ]).map((brand: any, idx) => (
+            <TouchableOpacity key={brand.id} style={styles.brandPill} onPress={() => navigateTo('BRANDS')}>
+              <View style={[styles.brandIcon, { backgroundColor: BRAND_COLORS[idx % BRAND_COLORS.length] }]}>
+                <Text style={styles.brandInitial}>{(brand.name || 'B')[0]}</Text>
+              </View>
+              <Text style={styles.brandName} numberOfLines={1}>{brand.name}</Text>
+              <Text style={styles.brandCat} numberOfLines={1}>{brand.category}</Text>
+              <TouchableOpacity style={styles.followBtn}>
+                <Text style={styles.followBtnText}>Follow</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* ── AI Smart Recommendations ── */}
+      <View style={styles.sectionCard}>
+        <View style={styles.sectionHeader}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.sectionEmoji}>🤖</Text>
+            <Text style={styles.sectionTitle}>AI Lanka Smart Recommendations</Text>
+          </View>
+          <TouchableOpacity onPress={() => navigateTo('PRODUCTS')}>
+            <Text style={styles.viewAll}>View All →</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+          {aiPicks.map((p: any) => {
+            const added = addedIds.has(p.id);
+            return (
+              <TouchableOpacity key={p.id} style={styles.productCard} onPress={() => { setSelectedProduct(p); navigateTo('PRODUCT_DETAIL'); }}>
+                <Image source={getImg(p)} style={styles.productImg} resizeMode="cover" />
+                {p.discountPercent && (
+                  <View style={[styles.discBadge, { top: 6, left: 6 }]}><Text style={styles.discBadgeText}>{p.discountPercent}%</Text></View>
+                )}
+                <TouchableOpacity style={styles.wishBtn}><Heart size={13} color={C.sub} /></TouchableOpacity>
+                <View style={{ padding: 8 }}>
+                  <Text style={styles.productName} numberOfLines={2}>{p.name}</Text>
+                  <Text style={styles.productStore}>{p.storeName}</Text>
+                  <View style={styles.productPriceRow}>
+                    <Text style={styles.productPrice}>LKR {Math.floor(p.price || 0).toLocaleString()}</Text>
+                    {p.originalPrice && <Text style={styles.productOld}>LKR {Math.floor(p.originalPrice).toLocaleString()}</Text>}
                   </View>
-                </View>
-
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={{ color: item.isClosed ? '#D50000' : '#00C853', fontSize: 10, fontWeight: 'bold', marginBottom: 4 }}>
-                    {item.isClosed ? "CLOSED" : `⏱️ ${item.timeRemainingSecs}s`}
-                  </Text>
-                  
-                  <TouchableOpacity
-                    style={[styles.bidBtn, { backgroundColor: item.isClosed ? '#444' : colors.secondary }]}
-                    disabled={item.isClosed}
-                    onPress={() => placeAuctionBid(item.id)}
-                  >
-                    <Text style={{ color: '#FFF', fontSize: 9, fontWeight: 'bold' }}>
-                      {item.highestBidder === (currentUser?.name || "username") ? "Holding" : "Bid +1K"}
-                    </Text>
+                  <TouchableOpacity style={[styles.cartBtn, added && { backgroundColor: C.success }]} onPress={() => handleAddToCart(p)}>
+                    <ShoppingCart size={12} color="#fff" />
+                    <Text style={styles.cartBtnText}>{added ? 'Added!' : 'Add'}</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* FOLLOWED BRANDS FEED */}
-        <View style={styles.feedSection}>
-          <Text style={[styles.feedHeaderTitle, { color: colors.text }]}>🏢 Premium Sri Lankan Brands</Text>
-          
-          {/* Brand Search Bar */}
-          <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border, marginVertical: 12, marginHorizontal: 16 }]}>
-            <Search color={colors.primary} size={18} style={{ marginLeft: 12 }} />
-            <TextInput 
-              style={[styles.searchInput, { color: colors.text }]}
-              placeholder="Search brands..."
-              placeholderTextColor={colors.subText}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.brandRow}>
-            {brands.filter(b => b.name.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 15).map(brand => (
-              <View key={brand.name} style={[styles.brandItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <View style={[styles.brandAvatar, { backgroundColor: colors.surfaceVariant, overflow: 'hidden' }]}>
-                  {brand.logo ? (
-                    <Image source={{ uri: Array.isArray(brand.logo) ? brand.logo[0] : brand.logo }} style={{ width: '100%', height: '100%' } as any} resizeMode="cover" />
-                  ) : (
-                    <Text style={{ color: colors.primary, fontSize: 14, fontWeight: 'bold' }}>
-                      {brand.name.charAt(0)}
-                    </Text>
-                  )}
-                </View>
-                <Text style={[styles.brandNameText, { color: colors.text }]} numberOfLines={1}>{brand.name}</Text>
-                <Text style={{ color: colors.subText, fontSize: 8, marginBottom: 6 }}>{brand.category}</Text>
-                
-                <TouchableOpacity 
-                  style={[
-                    styles.followBtn, 
-                    { backgroundColor: brand.isFollowed ? 'transparent' : colors.primary, borderColor: colors.primary, borderWidth: 1 }
-                  ]}
-                  onPress={() => {}}
-                >
-                  <Text style={{ color: brand.isFollowed ? colors.primary : colors.background, fontSize: 8, fontWeight: 'bold' }}>
-                    {brand.isFollowed ? "Following" : "Follow"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* AI PICKS FEED */}
-        <View style={styles.feedSection}>
-          <View style={styles.row}>
-            <Sparkles size={16} color={colors.primary} />
-            <Text style={[styles.feedHeaderTitle, { color: colors.text, marginLeft: 6 }]}>AI Lanka Smart Recommendations</Text>
-          </View>
-          
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.aiRow}>
-            {aiPicks.map(p => (
-              <TouchableOpacity 
-                key={p.id} 
-                style={[styles.aiPickCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => {
-                  setSelectedProduct(p);
-                  navigateTo('DETAIL');
-                }}
-              >
-                <Image source={p.images ? { uri: Array.isArray(p.images) ? p.images[0] : p.images } : getProductImage(p)} style={styles.aiProductImage} />
-                <View style={styles.aiPriceBadge}>
-                  <Text style={styles.aiPriceBadgeText}>LKR {p.price.toLocaleString()}</Text>
-                </View>
-                
-                <View style={{ padding: 8 }}>
-                  <Text style={[styles.aiTitle, { color: colors.text }]} numberOfLines={1}>{p.name}</Text>
-                  <Text style={{ color: colors.subText, fontSize: 8 }}>{p.storeName}</Text>
-                  <View style={[styles.rowBetween, { marginTop: 6 }]}>
-                    <Text style={{ color: '#00C853', fontSize: 9, fontWeight: 'bold' }}>{p.discountPercent}% OFF</Text>
-                    <TouchableOpacity style={[styles.aiBuyBtn, { backgroundColor: colors.primary }]} onPress={() => addToCart(p)}>
-                      <ShoppingCart size={10} color={colors.background} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* BEST DEALS GRID */}
-        <View style={styles.feedSection}>
-          <Text style={[styles.feedHeaderTitle, { color: colors.text }]}>🏷️ Best Local Platform Deals</Text>
-          
-          <View style={styles.dealsGrid}>
-            {promoDeals.slice(0, 6).map(offer => (
-              <TouchableOpacity 
-                key={offer.id} 
-                style={[styles.dealGridCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => {
-                  setSelectedOffer(offer);
-                  navigateTo('DETAIL');
-                }}
-              >
-                <View style={styles.dealDiscountCircle}>
-                  <Text style={styles.dealDiscountText}>{offer.discountPercent}%</Text>
-                  <Text style={{ fontSize: 6, color: '#FFF' }}>OFF</Text>
-                </View>
-                
-                <View style={{ flex: 1, paddingLeft: 10 }}>
-                  <Text style={[styles.dealStore, { color: colors.primary }]}>{offer.storeName}</Text>
-                  <Text style={[styles.dealTitle, { color: colors.text }]} numberOfLines={2}>{offer.title}</Text>
-                  <Text style={{ color: colors.subText, fontSize: 8, marginTop: 4 }}>📅 {offer.validUntil}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
+            );
+          })}
+        </ScrollView>
       </View>
+
+      {/* ── Best Platform Deals ── */}
+      <View style={[styles.sectionCard, { marginBottom: 30 }]}>
+        <View style={styles.sectionHeader}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.sectionEmoji}>🎯</Text>
+            <Text style={styles.sectionTitle}>Best Local Platform Deals</Text>
+          </View>
+          <TouchableOpacity onPress={() => navigateTo('OFFERS')}>
+            <Text style={styles.viewAll}>View All Deals →</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+          {allDeals.map((deal: any, idx) => (
+            <TouchableOpacity
+              key={deal.id || idx}
+              style={styles.dealCard}
+              onPress={() => { setSelectedOffer(deal); navigateTo('OFFER_DETAIL'); }}
+            >
+              <LinearGradient colors={[BRAND_COLORS[idx % BRAND_COLORS.length] + 'AA', C.card]} style={styles.dealHeader} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                {deal.discountPercent && (
+                  <Text style={styles.dealDiscount}>{deal.discountPercent}% OFF</Text>
+                )}
+              </LinearGradient>
+              <View style={{ padding: 10 }}>
+                <Text style={styles.dealStore} numberOfLines={1}>{deal.storeName}</Text>
+                <Text style={styles.dealTitle} numberOfLines={3}>{deal.title || deal.name}</Text>
+                {deal.expiryDate && (
+                  <Text style={styles.dealExpiry}>Valid till {deal.expiryDate}</Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
     </ScrollView>
+  );
+
+  return (
+    <View style={styles.root}>
+      {/* ── TOP NAVBAR ── */}
+      <View style={styles.navbar}>
+        {/* Left: location */}
+        <TouchableOpacity style={styles.locationPill}>
+          <MapPin size={12} color={C.accent} />
+          <Text style={styles.locationText}>{currentUser?.district || 'Colombo, Sri Lanka'}</Text>
+          <Text style={{ color: C.sub, fontSize: 10 }}>▾</Text>
+        </TouchableOpacity>
+
+        {/* Centre: search */}
+        <View style={styles.searchBar}>
+          <Search size={14} color={C.sub} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search products, brands, offers..."
+            placeholderTextColor={C.sub}
+            value={searchQ}
+            onChangeText={setSearchQ}
+          />
+        </View>
+
+        {/* Right: icons */}
+        <View style={styles.navRight}>
+          {/* Cart */}
+          <TouchableOpacity style={styles.iconBtn} onPress={() => currentUser ? navigateTo('CART') : navigateTo('AUTH')}>
+            <ShoppingCart size={18} color={C.text} />
+            {cartCount > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{cartCount > 9 ? '9+' : cartCount}</Text></View>}
+          </TouchableOpacity>
+
+          {/* Bell */}
+          <TouchableOpacity style={styles.iconBtn} onPress={() => setNotifOpen(true)}>
+            <Bell size={18} color={C.text} />
+            {notifCount > 0 && <View style={[styles.badge, { backgroundColor: C.live }]}><Text style={styles.badgeText}>{notifCount > 9 ? '9+' : notifCount}</Text></View>}
+          </TouchableOpacity>
+
+          {/* Avatar */}
+          {currentUser ? (
+            <TouchableOpacity style={styles.avatar} onPress={() => navigateTo('PROFILE')}>
+              <Text style={styles.avatarText}>{currentUser.name?.[0]?.toUpperCase() || 'U'}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.signInBtn} onPress={() => navigateTo('AUTH')}>
+              <LogIn size={13} color={C.accent} />
+              <Text style={styles.signInText}>Sign In / Register</Text>
+            </TouchableOpacity>
+          )}
+          {currentUser && (
+            <View>
+              <Text style={styles.hiText}>Hi, {currentUser.name?.split(' ')[0] || 'Guest'}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* ── BODY (sidebar + content) ── */}
+      <View style={styles.body}>
+        <Sidebar />
+        <Content />
+      </View>
+
+      {/* ── Notification Modal ── */}
+      <Modal visible={notifOpen} transparent animationType="fade" onRequestClose={() => setNotifOpen(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setNotifOpen(false)}>
+          <View style={styles.notifModal}>
+            <View style={styles.notifHeader}>
+              <Text style={styles.notifTitle}>Notifications</Text>
+              <TouchableOpacity onPress={() => setNotifOpen(false)}><X size={18} color={C.sub} /></TouchableOpacity>
+            </View>
+            <ScrollView>
+              {(pushLogs || []).map((log, i) => (
+                <View key={i} style={styles.notifItem}>
+                  <Bell size={13} color={C.accent} style={{ marginRight: 8 }} />
+                  <Text style={styles.notifText}>{log}</Text>
+                </View>
+              ))}
+              {(!pushLogs || pushLogs.length === 0) && (
+                <Text style={styles.notifEmpty}>No notifications yet</Text>
+              )}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </View>
   );
 };
 
-const styles = StyleSheet.create({
-  // ---- Header ----
-  homeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  logoHeader: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-  },
-  homeNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  navIconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(124,77,255,0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    position: 'relative',
-  },
-  searchContainerHeader: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(124,77,255,0.25)',
-    height: 36,
-    paddingHorizontal: 8,
-    gap: 6,
-  },
-  searchInputHeader: {
-    flex: 1,
-    height: '100%',
-    fontSize: 13,
-    outlineStyle: 'none',
-  } as any,
-  cartBadgeHeader: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#C77DFF',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 3,
-  },
-  cartBadgeTextHeader: {
-    color: '#FFF',
-    fontSize: 9,
-    fontWeight: 'bold',
-  },
-  mainContainer: {
-    width: '100%',
-    alignSelf: 'center',
-    paddingBottom: 40,
-  },
-  welcomeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    marginBottom: 16,
-  },
-  welcomeSub: {
-    fontSize: 12,
-  },
-  welcomeTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-  },
-  districtBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    gap: 4,
-  },
-  districtText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  heroCard: {
-    height: 180,
-    marginHorizontal: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-    marginBottom: 16,
-    position: 'relative',
-  },
-  heroImage: {
-    width: '100%',
-    height: '100%',
-  },
-  heroOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: 14,
-  },
-  indicatorPill: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginBottom: 4,
-  },
-  indicatorText: {
-    color: '#FFF',
-    fontSize: 8,
-    fontWeight: 'bold',
-  },
-  heroTitle: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  heroDesc: {
-    color: '#DDD',
-    fontSize: 11,
-    marginTop: 2,
-  },
-  slideIndicators: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 4,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  sectionCard: {
-    marginHorizontal: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 14,
-    marginBottom: 16,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  rowBetween: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sectionLabelTitle: {
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  limitBadge: {
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 6,
-  },
-  limitBadgeText: {
-    color: '#FFF',
-    fontSize: 7,
-    fontWeight: 'bold',
-  },
-  timerContainer: {
-    borderWidth: 1,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    backgroundColor: '#FFF',
-  },
-  timerText: {
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  flashDescText: {
-    fontSize: 9,
-    marginBottom: 10,
-  },
-  flashRow: {
-    gap: 8,
-    paddingVertical: 4,
-  },
-  flashItemBox: {
-    width: 110,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 8,
-    alignItems: 'center',
-  },
-  flashEmojiBox: {
-    width: '100%',
-    height: 44,
-    borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    marginBottom: 6,
-  },
-  flashItemName: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    width: '100%',
-    textAlign: 'center',
-  },
-  flashItemPrice: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    marginTop: 2,
-  },
-  stockBarBg: {
-    width: '100%',
-    height: 3,
-    backgroundColor: '#EEE',
-    borderRadius: 2,
-    marginTop: 6,
-    overflow: 'hidden',
-  },
-  stockBarFill: {
-    height: '100%',
-  },
-  stockText: {
-    fontSize: 7,
-    fontWeight: 'bold',
-    marginTop: 2,
-  },
-  flashBuyBtn: {
-    width: '100%',
-    height: 22,
-    borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  auctionHeaderTitle: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#4A148C',
-  },
-  liveBadge: {
-    backgroundColor: '#4A148C',
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 6,
-  },
-  liveBadgeText: {
-    color: '#FFF',
-    fontSize: 7,
-    fontWeight: 'bold',
-  },
-  auctionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 8,
-  },
-  auctionIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  auctionItemTitle: {
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  bidBtn: {
-    height: 22,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  feedSection: {
-    marginTop: 20,
-    paddingHorizontal: 16,
-  },
-  feedHeaderTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  brandRow: {
-    gap: 8,
-    paddingVertical: 4,
-  },
-  brandItem: {
-    width: 90,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 10,
-    alignItems: 'center',
-  },
-  brandAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  brandNameText: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  followBtn: {
-    height: 20,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  aiRow: {
-    gap: 8,
-    paddingVertical: 4,
-  },
-  aiPickCard: {
-    width: 120,
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  aiProductImage: {
-    width: '100%',
-    height: 70,
-  },
-  aiPriceBadge: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  aiPriceBadgeText: {
-    color: '#FFF',
-    fontSize: 8,
-    fontWeight: 'bold',
-  },
-  aiTitle: {
-    fontSize: 9,
-    fontWeight: 'bold',
-  },
-  aiBuyBtn: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  aiBuyBtnText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  dealsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  dealGridCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '48%',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 8,
-  },
-  dealDiscountCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#8E24AA',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dealDiscountText: {
-    color: '#FFF',
-    fontSize: 9,
-    fontWeight: 'bold',
-  },
-  dealStore: {
-    fontSize: 9,
-    fontWeight: 'bold',
-  },
-  dealTitle: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    marginTop: 2,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    height: 40,
-  },
-  searchInput: {
-    flex: 1,
-    height: '100%',
-    paddingHorizontal: 8,
-    fontSize: 14,
-  }
-});
 export default HomeScreen;
+
+// ─── STYLES ───────────────────────────────────────────────────────────────────
+const styles = StyleSheet.create({
+  root:             { flex: 1, backgroundColor: C.bg },
+
+  // Navbar
+  navbar:           { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: C.sidebar, borderBottomWidth: 1, borderBottomColor: C.border, gap: 10, zIndex: 10 },
+  locationPill:     { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.card, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: C.border },
+  locationText:     { color: C.text, fontSize: 11, fontWeight: '600' },
+  searchBar:        { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 8, paddingHorizontal: 12, height: 36, borderWidth: 1, borderColor: C.border, gap: 8 },
+  searchInput:      { flex: 1, color: C.text, fontSize: 13 },
+  navRight:         { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  iconBtn:          { position: 'relative', width: 34, height: 34, borderRadius: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, justifyContent: 'center', alignItems: 'center' },
+  badge:            { position: 'absolute', top: -4, right: -4, backgroundColor: C.accent, borderRadius: 9, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3 },
+  badgeText:        { color: '#fff', fontSize: 9, fontWeight: '800' },
+  avatar:           { width: 34, height: 34, borderRadius: 17, backgroundColor: C.accent, justifyContent: 'center', alignItems: 'center' },
+  avatarText:       { color: '#fff', fontWeight: '800', fontSize: 14 },
+  signInBtn:        { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.accentSoft, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: C.border },
+  signInText:       { color: C.accent, fontSize: 11, fontWeight: '700' },
+  hiText:           { color: C.sub, fontSize: 11 },
+
+  // Body
+  body:             { flex: 1, flexDirection: 'row' },
+
+  // Sidebar
+  sidebar:          { width: 200, backgroundColor: C.sidebar, borderRightWidth: 1, borderRightColor: C.border, paddingTop: 10 },
+  sidebarLogo:      { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 6 },
+  logoIcon:         { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  logoTitle:        { color: C.text, fontWeight: '900', fontSize: 15 },
+  logoSub:          { color: C.accent, fontSize: 10, fontWeight: '700' },
+  navSectionLabel:  { color: C.sub, fontSize: 9, fontWeight: '800', letterSpacing: 1, marginTop: 14, marginBottom: 4, paddingHorizontal: 14 },
+  navItem:          { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 9 },
+  navItemActive:    { backgroundColor: C.accentSoft, borderRightWidth: 2, borderRightColor: C.accent },
+  navItemText:      { fontSize: 13, fontWeight: '600' },
+  liveBadge:        { marginLeft: 'auto' as any, backgroundColor: C.live, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 },
+  liveBadgeText:    { color: '#fff', fontSize: 9, fontWeight: '800' },
+  countBadge:       { marginLeft: 'auto' as any, backgroundColor: C.accent, borderRadius: 9, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
+  countBadgeText:   { color: '#fff', fontSize: 10, fontWeight: '800' },
+  sellerCta:        { margin: 10, borderRadius: 12, padding: 14, marginTop: 16 },
+  sellerCtaTitle:   { color: '#fff', fontWeight: '800', fontSize: 13 },
+  sellerCtaSub:     { color: 'rgba(255,255,255,0.7)', fontSize: 10, marginTop: 2, marginBottom: 10 },
+  sellerCtaBtn:     { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8, paddingVertical: 7, alignItems: 'center' },
+  sellerCtaBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  darkToggle:       { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 14, borderTopWidth: 1, borderTopColor: C.border, marginTop: 8 },
+  darkToggleText:   { color: C.sub, fontSize: 12, flex: 1 },
+  toggleTrack:      { width: 32, height: 18, borderRadius: 9, backgroundColor: C.card, padding: 2 },
+  toggleThumb:      { width: 14, height: 14, borderRadius: 7, backgroundColor: '#fff' },
+
+  // Content area
+  content:          { flex: 1, backgroundColor: C.bg },
+
+  // Hero Banner
+  heroBanner:       { height: 240, margin: 12, borderRadius: 14, overflow: 'hidden', position: 'relative' },
+  heroContent:      { position: 'absolute', bottom: 24, left: 24, right: 80 },
+  heroTag:          { backgroundColor: 'rgba(168,95,255,0.9)', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 6 },
+  heroTagText:      { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  heroTitle:        { color: '#fff', fontSize: 22, fontWeight: '900', lineHeight: 26 },
+  heroSub:          { color: 'rgba(255,255,255,0.75)', fontSize: 11, marginTop: 4, lineHeight: 16 },
+  heroBtn:          { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.accent, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, alignSelf: 'flex-start', marginTop: 12 },
+  heroBtnText:      { color: '#fff', fontWeight: '700', fontSize: 12 },
+  slideArrow:       { position: 'absolute', top: '50%' as any, marginTop: -18, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center' },
+  slideArrowText:   { color: '#fff', fontSize: 22, lineHeight: 26 },
+  dotRow:           { position: 'absolute', bottom: 10, right: 16, flexDirection: 'row', gap: 5 },
+  dot:              { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.4)' },
+  dotActive:        { backgroundColor: C.accent, width: 18 },
+
+  // Section cards
+  twoCol:           { marginHorizontal: 12, gap: 12 },
+  sectionCard:      { backgroundColor: C.surface, borderRadius: 12, borderWidth: 1, borderColor: C.border, padding: 14, marginHorizontal: 12, marginTop: 12 },
+  sectionHeader:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionEmoji:     { fontSize: 16 },
+  sectionTitle:     { color: C.text, fontWeight: '800', fontSize: 14 },
+  sectionSub:       { color: C.sub, fontSize: 11, marginTop: 4 },
+  viewAll:          { color: C.accent, fontSize: 11, fontWeight: '700' },
+  livePill:         { backgroundColor: C.live, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  livePillText:     { color: '#fff', fontSize: 9, fontWeight: '800' },
+
+  // Timer
+  timerRow:         { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 6 },
+  timerBox:         { backgroundColor: C.card, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
+  timerNum:         { color: C.accent, fontSize: 20, fontWeight: '900', lineHeight: 24 },
+  timerLabel:       { color: C.sub, fontSize: 9, letterSpacing: 1 },
+  timerColon:       { color: C.accent, fontSize: 22, fontWeight: '900' },
+
+  // Flash cards
+  flashCard:        { width: 130, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.border, marginRight: 10, overflow: 'hidden' },
+  flashImg:         { width: '100%' as any, height: 80 },
+  flashName:        { color: C.text, fontSize: 11, fontWeight: '700', marginTop: 6, marginHorizontal: 8, lineHeight: 14 },
+  flashStore:       { color: C.sub, fontSize: 9, marginHorizontal: 8, marginTop: 2 },
+  flashPrice:       { color: C.accent, fontSize: 13, fontWeight: '800', marginHorizontal: 8, marginTop: 4 },
+  flashStock:       { color: C.warn, fontSize: 10, marginHorizontal: 8, marginTop: 2 },
+  claimBtn:         { backgroundColor: C.accent, margin: 8, borderRadius: 6, paddingVertical: 6, alignItems: 'center' },
+  claimBtnText:     { color: '#fff', fontSize: 11, fontWeight: '700' },
+  discBadge:        { position: 'absolute', top: 4, right: 4, backgroundColor: C.live, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2 },
+  discBadgeText:    { color: '#fff', fontSize: 9, fontWeight: '800' },
+
+  // Auctions
+  auctionRow:       { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.border, padding: 10, marginTop: 10 },
+  auctionImg:       { width: 54, height: 54, borderRadius: 8 },
+  auctionTitle:     { color: C.text, fontWeight: '700', fontSize: 12 },
+  auctionBidder:    { color: C.sub, fontSize: 10, marginTop: 2 },
+  auctionLabel:     { color: C.sub, fontSize: 9, marginTop: 4 },
+  auctionBid:       { color: C.accent, fontWeight: '800', fontSize: 14 },
+  bidBtn:           { backgroundColor: C.accent, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8 },
+  bidBtnText:       { color: '#fff', fontSize: 11, fontWeight: '800' },
+
+  // Brands
+  brandPill:        { width: 90, alignItems: 'center', marginRight: 12, backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.border, paddingVertical: 12 },
+  brandIcon:        { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
+  brandInitial:     { color: '#fff', fontWeight: '900', fontSize: 16 },
+  brandName:        { color: C.text, fontSize: 11, fontWeight: '700', marginBottom: 2 },
+  brandCat:         { color: C.sub, fontSize: 9, marginBottom: 8 },
+  followBtn:        { backgroundColor: C.accentSoft, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: C.border },
+  followBtnText:    { color: C.accent, fontSize: 10, fontWeight: '700' },
+
+  // AI Products
+  productCard:      { width: 150, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.border, marginRight: 10, overflow: 'hidden' },
+  productImg:       { width: '100%' as any, height: 110 },
+  productName:      { color: C.text, fontSize: 11, fontWeight: '700', lineHeight: 14 },
+  productStore:     { color: C.sub, fontSize: 9, marginTop: 2 },
+  productPriceRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  productPrice:     { color: C.accent, fontWeight: '800', fontSize: 13 },
+  productOld:       { color: C.sub, fontSize: 10, textDecorationLine: 'line-through' },
+  cartBtn:          { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.accent, borderRadius: 6, paddingVertical: 5, paddingHorizontal: 8, marginTop: 6, alignSelf: 'flex-start' as any },
+  cartBtnText:      { color: '#fff', fontSize: 10, fontWeight: '700' },
+  wishBtn:          { position: 'absolute', top: 6, right: 6, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, width: 24, height: 24, justifyContent: 'center', alignItems: 'center' },
+
+  // Deals
+  dealCard:         { width: 160, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.border, marginRight: 10, overflow: 'hidden' },
+  dealHeader:       { height: 60, justifyContent: 'flex-end', padding: 8 },
+  dealDiscount:     { color: '#fff', fontWeight: '900', fontSize: 18 },
+  dealStore:        { color: C.accent, fontSize: 10, fontWeight: '700' },
+  dealTitle:        { color: C.text, fontSize: 11, fontWeight: '600', marginTop: 4, lineHeight: 15 },
+  dealExpiry:       { color: C.sub, fontSize: 9, marginTop: 6 },
+
+  // Notif modal
+  modalOverlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end', alignItems: 'flex-end', paddingTop: 50, paddingRight: 10 },
+  notifModal:       { width: 300, maxHeight: 400, backgroundColor: C.surface, borderRadius: 14, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
+  notifHeader:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: C.border },
+  notifTitle:       { color: C.text, fontWeight: '800', fontSize: 14 },
+  notifItem:        { flexDirection: 'row', alignItems: 'flex-start', padding: 12, borderBottomWidth: 1, borderBottomColor: C.border },
+  notifText:        { color: C.sub, fontSize: 12, flex: 1, lineHeight: 16 },
+  notifEmpty:       { color: C.sub, fontSize: 12, textAlign: 'center', padding: 20 },
+});

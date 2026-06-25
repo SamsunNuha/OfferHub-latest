@@ -2,23 +2,23 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { DefaultTheme, Provider as PaperProvider } from 'react-native-paper';
 
-// Premium purple dark theme tokens
+// Light purple themed colors – consistent across dark/light modes
 const darkColors = {
-  primary: '#6C3BFF',
-  secondary: '#8B5CF6',
-  background: '#080014',
-  surface: '#140726',
-  error: '#FF1744',
-  text: '#FFFFFF',
-  onSurface: '#FFFFFF',
-  disabled: '#555555',
+  primary: '#A865C9', // light purple primary
+  secondary: '#BF77F6', // complementary accent
+  background: '#F6F2FF', // light purple background
+  surface: '#FFFFFF', // white surfaces (cards, panels)
+  error: '#FF1744', // keep vivid error red
+  text: '#120024', // dark text for readability on light background
+  onSurface: '#120024',
+  disabled: '#CCCCCC',
   placeholder: '#B0A2C9',
   backdrop: 'rgba(0,0,0,0.5)',
 };
 
 const lightColors = {
-  primary: '#6C3BFF',
-  secondary: '#8B5CF6',
+  primary: '#A865C9',
+  secondary: '#BF77F6',
   background: '#F6F2FF',
   surface: '#FFFFFF',
   error: '#B00020',

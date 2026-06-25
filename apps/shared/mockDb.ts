@@ -223,7 +223,7 @@ export const initialDistricts: District[] = [
 // 3. Prepopulated Users (22 Users)
 export const initialUsers: User[] = [
   { email: "admin@offerlanka.com", name: "Mohamed Ruskan", role: "ADMIN", rewardPoints: 99999, savedOfferIds: "", password: "password123", district: "Colombo", walletBalance: 100000, subscriptionState: "GOLD", referralCode: "REF-ADMIN-99", hasClaimedReferral: false },
-  { email: "admin@offerhub.lk", name: "Platform Admin", role: "ADMIN", rewardPoints: 99999, savedOfferIds: "", password: "password123", district: "Colombo", walletBalance: 100000, subscriptionState: "GOLD", referralCode: "REF-PLAT-99", hasClaimedReferral: false },
+
   { email: "merchant@keells.lk", name: "Keells Supermarkets", role: "MERCHANT", rewardPoints: 250, savedOfferIds: "", password: "demo123", district: "Colombo", walletBalance: 12000, subscriptionState: "SILVER", referralCode: "REF-KEELLS-101", hasClaimedReferral: false },
   { email: "merchant@cargills.lk", name: "Cargills FoodCity", role: "MERCHANT", rewardPoints: 300, savedOfferIds: "", password: "demo123", district: "Colombo", walletBalance: 15000, subscriptionState: "SILVER", referralCode: "REF-CARGILLS-102", hasClaimedReferral: false },
   { email: "nuhman@gmail.com", name: "Nuhman Samsudeen", role: "NORMAL", rewardPoints: 580, savedOfferIds: "", password: "demo123", district: "Colombo", walletBalance: 1500.0, subscriptionState: "FREE", referralCode: "REF-LANKA-771", hasClaimedReferral: false },

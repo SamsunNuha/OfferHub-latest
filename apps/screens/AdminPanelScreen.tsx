@@ -11,6 +11,8 @@ import {
 import { initialTickets } from '../shared/mockDb';
 
 export const AdminPanelScreen: React.FC = () => {
+
+const SUPERADMIN_CREDENTIALS = { username: 'superadmin', password: 'SuperSecret123' };
   const { 
     isDarkMode, products, offers, allUsers, allOrders, 
     approveProduct, deleteProduct, approveOffer, deleteOffer, navigateTo, currentUser, signOut 
@@ -128,7 +130,7 @@ export const AdminPanelScreen: React.FC = () => {
     <View style={{ flex: 1 }}>
       {/* Sidebar Header / Logo */}
       <View style={[styles.sidebarHeader, { borderBottomColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 10 }]}>
-        <Image source={require('../assets/logo.png')} style={{ width: 110, height: 35 }} resizeMode="contain" />
+        <Image source={require('../assets/logo_full.png')} style={{ width: 54, height: 54 }} resizeMode="contain" />
         <View style={[styles.enterpriseBadge, { backgroundColor: colors.primaryGlow, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }]}>
           <Text style={[styles.enterpriseText, { color: colors.primary, fontSize: 8 }]}>ENTERPRISE</Text>
         </View>
@@ -241,7 +243,557 @@ export const AdminPanelScreen: React.FC = () => {
     </View>
   );
 
-  return (
+  const styles = StyleSheet.create({
+  // Navbar and location styles removed (not used)
+
+  // Search bar and related styles
+  searchBar: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 36,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 8,
+  },
+  searchInput: { flex: 1, color: colors.text, fontSize: 13 },
+  navRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  iconBtn: {
+    position: 'relative',
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: colors.primary,
+    borderRadius: 9,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+  avatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  signInBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.primaryGlow,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  signInText: { color: colors.primary, fontSize: 11, fontWeight: '700' },
+  hiText: { color: colors.subText, fontSize: 11 },
+  mainLayout: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  // Desktop Sidebar
+  sidebarDesktop: {
+    width: 250,
+    height: '100%',
+    borderRightWidth: 1,
+    paddingTop: 10,
+  },
+  // Mobile Header
+  mobileHeader: {
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+  },
+  mobileHeaderTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  // Mobile Drawer
+  mobileDrawerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 999,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  mobileDrawer: {
+    width: 250,
+    height: '100%',
+    borderRightWidth: 1,
+    paddingTop: 10,
+  },
+  mobileCloseContainer: {
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  // Sidebar Header
+  sidebarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+  },
+  logoIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoIconText: {
+    color: '#FFF',
+    fontWeight: '900',
+    fontSize: 14,
+  },
+  logoText: {
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  enterpriseBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 2,
+  },
+  enterpriseText: {
+    fontSize: 8,
+    fontWeight: 'bold',
+  },
+  // Profile Section
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    margin: 16,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  profileAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  profileName: {
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  profileRole: {
+    fontSize: 8,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  // Navigation Menu
+  menuContainer: {
+    paddingHorizontal: 16,
+    gap: 6,
+  },
+  menuHeading: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    marginBottom: 6,
+    letterSpacing: 1,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  menuItemActive: {
+    borderWidth: 1,
+  },
+  menuItemText: {
+    fontSize: 12,
+  },
+  badgeCount: {
+    marginLeft: 'auto',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  badgeCountText: {
+    color: '#FFF',
+    fontSize: 8,
+    fontWeight: 'bold',
+  },
+  // Sidebar Footer
+  sidebarFooter: {
+    marginTop: 40,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+  },
+  signOutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  signOutText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  // Content Layout
+  contentArea: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  viewSection: {
+    gap: 20,
+  },
+  welcomeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  welcomeSub: {
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  welcomeTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    marginTop: 4,
+  },
+  badgeClearance: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  badgeClearanceText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  // Stats Tiles
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  statTileCard: {
+    flex: 1,
+    minWidth: '45%',
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+  },
+  statTileHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  trendBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  trendBadgeText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  liveIndicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginLeft: 'auto',
+    marginRight: 4,
+  },
+  liveText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  statTileVal: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  statTileLabel: {
+    fontSize: 10,
+  },
+  // Cards
+  systemStatusCard: {
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+  },
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  cardSubText: {
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  indicatorBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
+    borderTopWidth: 0.5,
+    paddingTop: 10,
+  },
+  indicatorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  recentOrdersCard: {
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  orderMiniRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+  },
+  orderMiniId: {
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  orderMiniItems: {
+    fontSize: 10,
+    marginTop: 2,
+  },
+  // Catalogue View
+  catalogueHeaderCard: {
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 12,
+  },
+  searchBox: {
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    fontSize: 12,
+  },
+  catalogueTabs: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  catTabBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  catTabBtnActive: {
+    shadowOpacity: 0.1,
+  },
+  catTabText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  catalogItemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  catalogItemName: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  deleteBtn: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  // Moderation
+  moderationGroup: {
+    gap: 8,
+  },
+  groupHeading: {
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  emptyCard: {
+    padding: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  modRow: {
+    flexDirection: 'row',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  modItemTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  modActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionRoundBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Clearance View
+  adminActionsCard: {
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  seedBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 40,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  seedBtnText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  alertBox: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 0.5,
+  },
+  userListItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  userListName: {
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  roleBadgeContainer: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  roleBadgeText: {
+    color: '#FFF',
+    fontSize: 8,
+    fontWeight: 'bold',
+  },
+  // Tickets View
+  ticketCard: {
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 10,
+  },
+  ticketHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  ticketSubject: {
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  ticketMessage: {
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  replyBox: {
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  replyBtn: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  replyBtnText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  replyInput: {
+    height: 60,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 11,
+  },
+  replyActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 8,
+  },
+  cancelReplyBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  submitReplyBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  }
+});
+return (
+    <>
     <View style={[styles.mainLayout, { backgroundColor: colors.background }]}>
       
       {/* ----------------------------------------------------
@@ -651,492 +1203,9 @@ export const AdminPanelScreen: React.FC = () => {
         </ScrollView>
       </View>
     </View>
+  </>
   );
 };
 
-const styles = StyleSheet.create({
-  mainLayout: {
-    flex: 1,
-    flexDirection: 'row',
-  },
-  // Desktop Sidebar
-  sidebarDesktop: {
-    width: 250,
-    height: '100%',
-    borderRightWidth: 1,
-    paddingTop: 10,
-  },
-  // Mobile Header
-  mobileHeader: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-  },
-  mobileHeaderTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  // Mobile Drawer
-  mobileDrawerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 999,
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  mobileDrawer: {
-    width: 250,
-    height: '100%',
-    borderRightWidth: 1,
-    paddingTop: 10,
-  },
-  mobileCloseContainer: {
-    alignItems: 'flex-end',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  // Sidebar Header
-  sidebarHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-  },
-  logoIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoIconText: {
-    color: '#FFF',
-    fontWeight: 'black',
-    fontSize: 14,
-  },
-  logoText: {
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  enterpriseBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginTop: 2,
-  },
-  enterpriseText: {
-    fontSize: 8,
-    fontWeight: 'bold',
-  },
-  // Profile Section
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    margin: 16,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  profileAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  profileName: {
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  profileRole: {
-    fontSize: 8,
-    fontWeight: 'black',
-    marginTop: 2,
-  },
-  // Navigation Menu
-  menuContainer: {
-    paddingHorizontal: 16,
-    gap: 6,
-  },
-  menuHeading: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    marginBottom: 6,
-    letterSpacing: 1,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  menuItemActive: {
-    borderWidth: 1,
-  },
-  menuItemText: {
-    fontSize: 12,
-  },
-  badgeCount: {
-    marginLeft: 'auto',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  badgeCountText: {
-    color: '#FFF',
-    fontSize: 8,
-    fontWeight: 'bold',
-  },
-  // Sidebar Footer
-  sidebarFooter: {
-    marginTop: 40,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-  },
-  signOutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  signOutText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  // Content Layout
-  contentArea: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  viewSection: {
-    gap: 20,
-  },
-  welcomeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  welcomeSub: {
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  welcomeTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    marginTop: 4,
-  },
-  badgeClearance: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  badgeClearanceText: {
-    fontSize: 9,
-    fontWeight: 'bold',
-  },
-  // Stats Tiles
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  statTileCard: {
-    flex: 1,
-    minWidth: '45%',
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 8,
-  },
-  statTileHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  trendBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  trendBadgeText: {
-    fontSize: 9,
-    fontWeight: 'bold',
-  },
-  liveIndicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginLeft: 'auto',
-    marginRight: 4,
-  },
-  liveText: {
-    fontSize: 9,
-    fontWeight: 'bold',
-  },
-  statTileVal: {
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  statTileLabel: {
-    fontSize: 10,
-  },
-  // Cards
-  systemStatusCard: {
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 8,
-  },
-  cardTitle: {
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  cardSubText: {
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  indicatorBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 6,
-    borderTopWidth: 0.5,
-    paddingTop: 10,
-  },
-  indicatorDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  recentOrdersCard: {
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  orderMiniRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderBottomWidth: 0.5,
-  },
-  orderMiniId: {
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  orderMiniItems: {
-    fontSize: 10,
-    marginTop: 2,
-  },
-  // Catalogue View
-  catalogueHeaderCard: {
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 12,
-  },
-  searchBox: {
-    height: 38,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    fontSize: 12,
-  },
-  catalogueTabs: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  catTabBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  catTabBtnActive: {
-    shadowOpacity: 0.1,
-  },
-  catTabText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  catalogItemCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  catalogItemName: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginBottom: 2,
-  },
-  deleteBtn: {
-    padding: 8,
-    borderRadius: 8,
-  },
-  // Moderation
-  moderationGroup: {
-    gap: 8,
-  },
-  groupHeading: {
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  emptyCard: {
-    padding: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
-  modRow: {
-    flexDirection: 'row',
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
-  modItemTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginBottom: 2,
-  },
-  modActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionRoundBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  // Clearance View
-  adminActionsCard: {
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  seedBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    height: 40,
-    borderRadius: 10,
-    marginTop: 8,
-  },
-  seedBtnText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  alertBox: {
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 0.5,
-  },
-  userListItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 8,
-  },
-  userListName: {
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  roleBadgeContainer: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  roleBadgeText: {
-    color: '#FFF',
-    fontSize: 8,
-    fontWeight: 'bold',
-  },
-  // Tickets View
-  ticketCard: {
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 10,
-  },
-  ticketHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  ticketSubject: {
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  ticketMessage: {
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  replyBox: {
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 4,
-  },
-  replyBtn: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingVertical: 8,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  replyBtnText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  replyInput: {
-    height: 60,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 11,
-  },
-  replyActionRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
-    marginTop: 8,
-  },
-  cancelReplyBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  submitReplyBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  }
-});
+
+

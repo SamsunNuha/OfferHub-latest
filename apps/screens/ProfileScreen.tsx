@@ -7,7 +7,7 @@ import { useAppContext } from '../shared/AppContext';
 import { useDimensions } from '../hooks/useDimensions';
 import { 
   User as UserIcon, Wallet, Settings, Bell, 
-  Award, Calendar, Edit3, LogOut, ChevronRight 
+  Award, Calendar, Edit3, LogOut, ChevronRight, Package, CreditCard, CheckCircle
 } from 'lucide-react-native';
 
 export const ProfileScreen: React.FC = () => {
@@ -285,6 +285,65 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
 
+        {/* PAYMENT & ORDER HISTORY */}
+        <View style={[styles.sectionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+            <Package size={16} color={colors.primary} />
+            <Text style={[styles.cardHeaderTitle, { color: colors.text }]}>Payment & Order History</Text>
+          </View>
+
+          {orders.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+              <Package size={32} color={colors.subText} />
+              <Text style={{ color: colors.subText, fontSize: 12, marginTop: 8 }}>No orders placed yet</Text>
+            </View>
+          ) : (
+            <View style={{ gap: 10 }}>
+              {orders.map((order: any) => (
+                <View
+                  key={order.id}
+                  style={[styles.orderCard, { backgroundColor: colors.surfaceVariant, borderColor: colors.border }]}
+                >
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: colors.primary, fontSize: 11, fontWeight: 'bold' }}>#{order.id}</Text>
+                      <Text style={{ color: colors.subText, fontSize: 9, marginTop: 2 }}>
+                        {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-LK', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Date N/A'}
+                      </Text>
+                    </View>
+                    <View style={[
+                      styles.statusBadge,
+                      { backgroundColor: order.status === 'DELIVERED' ? 'rgba(0,200,83,0.12)' : 'rgba(124,77,255,0.12)' }
+                    ]}>
+                      <CheckCircle size={10} color={order.status === 'DELIVERED' ? '#00C853' : colors.primary} />
+                      <Text style={[
+                        styles.statusText,
+                        { color: order.status === 'DELIVERED' ? '#00C853' : colors.primary }
+                      ]}>
+                        {order.status || 'Processing'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.orderDivider, { backgroundColor: colors.border }]} />
+
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <CreditCard size={11} color={colors.subText} />
+                      <Text style={{ color: colors.subText, fontSize: 10 }}>
+                        {order.paymentMethod || 'Cash on Delivery'}
+                      </Text>
+                    </View>
+                    <Text style={{ color: colors.text, fontSize: 13, fontWeight: 'bold' }}>
+                      LKR {order.totalPrice?.toLocaleString()}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
         {/* LOGOUT */}
         <TouchableOpacity 
           style={[styles.logoutBtn, { borderColor: colors.border }]}
@@ -545,6 +604,29 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 4,
-  }
-});
+  },
+  orderCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    gap: 8,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  orderDivider: {
+    height: 1,
+    marginVertical: 2,
+  },
+})
 export default ProfileScreen;

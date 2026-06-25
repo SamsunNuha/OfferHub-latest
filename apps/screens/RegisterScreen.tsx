@@ -27,14 +27,16 @@ const districts = [
 ];
 
 const schema = yup.object().shape({
-  fullName: yup.string().required('Full name is required'),
+  fullName: yup.string()
+    .matches(/^[A-Za-z ]+$/, 'Only letters and spaces allowed')
+    .required('Full name is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
   phone: yup.string()
-    .matches(/^[0-9]{9}$/, 'Enter exactly 9 digits after +94')
+    .matches(/^\d{9}$/, 'Enter exactly 9 digits after +94')
     .required('Phone is required'),
   district: yup.string().required('District is required'),
   password: yup.string()
-    .min(8, 'Min 8 characters')
+    .min(6, 'Min 6 characters')
     .matches(/[A-Z]/, 'Need uppercase letter')
     .matches(/[0-9!@#$%^&*()]/, 'Need number or symbol')
     .required('Password is required'),
@@ -66,18 +68,27 @@ export default function RegisterScreen({ navigation }: any) {
     success: '#00E676',
   };
 
-  const [accountType, setAccountType] = useState<AccountType>('user');
-  const [showPw, setShowPw] = useState(false);
+  
+const [accountType, setAccountType] = useState<AccountType>('user');
   const [showCpw, setShowCpw] = useState(false);
+  const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [firebaseError, setFirebaseError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [showDistrictModal, setShowDistrictModal] = useState(false);
+  const [districtSearch, setDistrictSearch] = useState('');
 
-  const { control, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
-    resolver: yupResolver(schema),
-    defaultValues: { district: '' },
+  const { control, handleSubmit, watch, setValue, formState: { errors, isValid } } = useForm<FormData>({
+    resolver: yupResolver<FormData>(schema),
     mode: 'onChange',
+    defaultValues: {
+      fullName: '',
+      email: '',
+      phone: '',
+      district: '',
+      password: '',
+      confirmPassword: '',
+    },
   });
 
   const pw = watch('password', '');
@@ -131,15 +142,16 @@ export default function RegisterScreen({ navigation }: any) {
 
   return (
     <ImageBackground
-      source={require('../assets/city_skyline_bg.png')}
-      style={{ flex: 1 }}
-      imageStyle={{ opacity: isDarkMode ? 0.8 : 0.2 }}
-    >
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: isDarkMode ? 'rgba(8,3,20,0.65)' : 'rgba(246,242,255,0.85)' }]} />
+        source={require('../assets/city_skyline_bg.png')}
+        style={{ flex: 1 }}
+        imageStyle={{ opacity: isDarkMode ? 0.8 : 0.2 }}
+
+      >
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: isDarkMode ? 'rgba(8,3,20,0.65)' : 'rgba(246,242,255,0.85)' }]} />
 
       {/* NAVBAR */}
       <View style={styles.navbar}>
-        <View style={styles.navBrand}>
+        <View style={styles.navLeft}>
           <LinearGradient colors={C.gradient} style={styles.navLogo} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <ShoppingBag size={16} color="#fff" />
           </LinearGradient>
@@ -164,6 +176,7 @@ export default function RegisterScreen({ navigation }: any) {
         <ScrollView
           contentContainerStyle={[styles.scroll, IS_DESKTOP && styles.scrollDesktop]}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="always"
         >
           {/* WIDE CARD */}
           <View style={[
@@ -183,6 +196,7 @@ export default function RegisterScreen({ navigation }: any) {
               <Text style={[styles.subtitle, { color: C.sub }]}>
                 Join Offer Lanka and discover exclusive offers across Sri Lanka
               </Text>
+            <TextInput placeholder="Test input" style={{ borderWidth: 1, marginTop: 10, color: C.text }} />
             </View>
 
             {/* Banners */}
@@ -212,7 +226,10 @@ export default function RegisterScreen({ navigation }: any) {
                         style={[styles.input, { color: C.text }]}
                         placeholder="Enter your full name"
                         placeholderTextColor={C.sub}
-                        onBlur={onBlur} onChangeText={onChange} value={value}
+                        onBlur={onBlur}
+                        onChangeText={text => onChange(text.replace(/[^A-Za-z ]/g, ''))}
+                        value={value || ''}
+                        blurOnSubmit={false}
                       />
                     )}
                   />
@@ -223,17 +240,21 @@ export default function RegisterScreen({ navigation }: any) {
                   <Text style={[styles.prefix, { color: C.sub }]}>🇱🇰 +94</Text>
                   <View style={[styles.divider, { backgroundColor: C.inputBorder }]} />
                   <Controller
-                    control={control} name="phone"
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <TextInput
-                        style={[styles.input, { color: C.text }]}
-                        placeholder="7X XXX XXXX"
-                        placeholderTextColor={C.sub}
-                        keyboardType="phone-pad" maxLength={9}
-                        onBlur={onBlur} onChangeText={onChange} value={value}
-                      />
-                    )}
-                  />
+                     control={control} name="phone"
+                     render={({ field: { onChange, onBlur, value } }) => (
+                       <TextInput
+                         style={[styles.input, { color: C.text }]}
+                         placeholder="7X XXX XXXX"
+                         placeholderTextColor={C.sub}
+                         keyboardType="phone-pad"
+                         maxLength={9}
+                         onBlur={onBlur}
+                         onChangeText={text => onChange(text.replace(/[^0-9]/g, '').slice(0,9))}
+                         value={value || ''}
+                         blurOnSubmit={false}
+                       />
+                     )}
+                   />
                 </Field>
 
                 {/* Password */}
@@ -242,17 +263,20 @@ export default function RegisterScreen({ navigation }: any) {
                   <View style={[styles.inputRow, { borderColor: C.inputBorder, backgroundColor: C.inputBg }]}>
                     <Lock size={17} color={C.sub} />
                     <Controller
-                      control={control} name="password"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <TextInput
-                          style={[styles.input, { color: C.text }]}
-                          placeholder="••••••••••••"
-                          placeholderTextColor={C.sub}
-                          secureTextEntry={!showPw}
-                          onBlur={onBlur} onChangeText={onChange} value={value}
-                        />
-                      )}
-                    />
+                       control={control} name="password"
+                       render={({ field: { onChange, onBlur, value } }) => (
+                         <TextInput
+                           style={[styles.input, { color: C.text }]}
+                           placeholder="••••••••••••"
+                           placeholderTextColor={C.sub}
+                           secureTextEntry={!showPw}
+                           onBlur={onBlur}
+                           onChangeText={onChange}
+                           value={value || ''}
+                           blurOnSubmit={false}
+                         />
+                       )}
+                     />
                     <TouchableOpacity onPress={() => setShowPw(v => !v)}>
                       {showPw ? <Eye size={16} color={C.sub} /> : <EyeOff size={16} color={C.sub} />}
                     </TouchableOpacity>
@@ -287,17 +311,20 @@ export default function RegisterScreen({ navigation }: any) {
                 {/* Email */}
                 <Field label="Email Address" icon={Mail} error={errors.email?.message}>
                   <Controller
-                    control={control} name="email"
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <TextInput
-                        style={[styles.input, { color: C.text }]}
-                        placeholder="Enter your email address"
-                        placeholderTextColor={C.sub}
-                        keyboardType="email-address" autoCapitalize="none"
-                        onBlur={onBlur} onChangeText={onChange} value={value}
-                      />
-                    )}
-                  />
+                     control={control} name="email"
+                     render={({ field: { onChange, onBlur, value } }) => (
+                       <TextInput
+                         style={[styles.input, { color: C.text }]}
+                         placeholder="Enter your email address"
+                         placeholderTextColor={C.sub}
+                         keyboardType="email-address" autoCapitalize="none"
+                         onBlur={onBlur}
+                         onChangeText={onChange}
+                         value={value || ''}
+                         blurOnSubmit={false}
+                       />
+                     )}
+                   />
                 </Field>
 
                 {/* District */}
@@ -328,17 +355,20 @@ export default function RegisterScreen({ navigation }: any) {
                   <View style={[styles.inputRow, { borderColor: C.inputBorder, backgroundColor: C.inputBg }]}>
                     <Lock size={17} color={C.sub} />
                     <Controller
-                      control={control} name="confirmPassword"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <TextInput
-                          style={[styles.input, { color: C.text }]}
-                          placeholder="••••••••••••"
-                          placeholderTextColor={C.sub}
-                          secureTextEntry={!showCpw}
-                          onBlur={onBlur} onChangeText={onChange} value={value}
-                        />
-                      )}
-                    />
+                       control={control} name="confirmPassword"
+                       render={({ field: { onChange, onBlur, value } }) => (
+                         <TextInput
+                           style={[styles.input, { color: C.text }]}
+                           placeholder="••••••••••••"
+                           placeholderTextColor={C.sub}
+                           secureTextEntry={!showCpw}
+                           onBlur={onBlur}
+                           onChangeText={onChange}
+                           value={value || ''}
+                           blurOnSubmit={false}
+                         />
+                       )}
+                     />
                     <TouchableOpacity onPress={() => setShowCpw(v => !v)}>
                       {showCpw ? <Eye size={16} color={C.sub} /> : <EyeOff size={16} color={C.sub} />}
                     </TouchableOpacity>
@@ -379,8 +409,8 @@ export default function RegisterScreen({ navigation }: any) {
             <TouchableOpacity
               activeOpacity={0.85}
               onPress={handleSubmit(handleRegister)}
-              disabled={loading}
-              style={{ marginTop: 10 }}
+              disabled={!isValid || loading}
+              style={{ marginTop: 10, backgroundColor: !isValid || loading ? '#888' : C.accent, opacity: !isValid || loading ? 0.6 : 1 }}
             >
               <LinearGradient
                 colors={C.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
@@ -413,19 +443,23 @@ export default function RegisterScreen({ navigation }: any) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* DISTRICT MODAL */}
       <Modal visible={showDistrictModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalBox, { backgroundColor: isDarkMode ? '#160A2E' : '#FFF' }]}>
-            <Text style={[styles.modalTitle, { color: isDarkMode ? '#FFF' : '#120024' }]}>Select District</Text>
+        <View style={styles.modalOverlay} pointerEvents="auto">
+          <View style={[styles.modalBox, { backgroundColor: isDarkMode ? '#1A1A1A' : '#FFF' }]} pointerEvents="auto">
+            <Text style={[styles.modalTitle, { color: C.text }]}>Select District</Text>
+            <TextInput
+              style={[styles.input, { padding: 10, borderWidth: 1, borderColor: C.inputBorder, borderRadius: 8, marginBottom: 10, color: C.text }]}
+              placeholder="Search district..."
+              placeholderTextColor={C.sub}
+              onChangeText={setDistrictSearch}
+            />
             <FlatList
-              data={districts}
+              data={districts.filter(d => d.toLowerCase().includes(districtSearch.toLowerCase()))}
               keyExtractor={item => item}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[styles.modalItem, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#E9E2FF' }]}
-                  onPress={() => { setValue('district', item, { shouldValidate: true }); setShowDistrictModal(false); }}
+                  onPress={() => { setValue('district', item, { shouldValidate: true }); setShowDistrictModal(false); setDistrictSearch(''); }}
                 >
                   <Text style={{ fontSize: 15, color: isDarkMode ? '#FFF' : '#120024', textAlign: 'center' }}>{item}</Text>
                 </TouchableOpacity>
@@ -433,7 +467,7 @@ export default function RegisterScreen({ navigation }: any) {
             />
             <TouchableOpacity
               style={[styles.modalClose, { backgroundColor: isDarkMode ? 'rgba(168,95,255,0.15)' : '#F6F2FF' }]}
-              onPress={() => setShowDistrictModal(false)}
+              onPress={() => { setShowDistrictModal(false); setDistrictSearch(''); }}
             >
               <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#A85FFF', textAlign: 'center' }}>Cancel</Text>
             </TouchableOpacity>
@@ -449,6 +483,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 24, paddingVertical: 18,
   },
+  navLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   navBrand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   navLogo: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
   navBrandText: { fontSize: 18, fontWeight: '900', letterSpacing: 1 },

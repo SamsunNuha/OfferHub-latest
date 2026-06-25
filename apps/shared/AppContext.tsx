@@ -18,6 +18,8 @@ export interface AppContextType {
   // Screen Router
   currentScreen: string;
   navigateTo: (screen: string) => void;
+  goBack: () => void;
+  canGoBack: boolean;
 
   // Selected details
   selectedOffer: Offer | null;
@@ -136,7 +138,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [appLanguage, setAppLanguage] = useState<AppLanguage>('EN');
   
   // Screen Router
-  const [currentScreen, setCurrentScreen] = useState('AUTH');
+  const [currentScreen, setCurrentScreen] = useState('HOME');
+  const [screenHistory, setScreenHistory] = useState<string[]>([]);
   
   // Details Selected
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
@@ -371,8 +374,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setShowAuthDialog(true);
       return;
     }
+    // Push current screen to history before navigating
+    setScreenHistory(prev => [...prev, currentScreen]);
     setCurrentScreen(screen);
   };
+
+  const goBack = () => {
+    setScreenHistory(prev => {
+      if (prev.length === 0) {
+        setCurrentScreen('HOME');
+        return prev;
+      }
+      const history = [...prev];
+      const previousScreen = history.pop()!;
+      setCurrentScreen(previousScreen);
+      return history;
+    });
+  };
+
+  const canGoBack = screenHistory.length > 0;
 
   const handleSetShowAuthDialog = (show: boolean, reason = '') => {
     setShowAuthDialog(show);
@@ -429,7 +449,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUser(null);
     setCart({});
     setFavorites([]);
-    setCurrentScreen('AUTH');
+    setCurrentScreen('HOME');
   };
 
   const updateUserRoleSimulated = async (role: 'NORMAL' | 'MERCHANT' | 'ADMIN') => {
@@ -905,6 +925,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       t,
       currentScreen,
       navigateTo,
+      goBack,
+      canGoBack,
       selectedOffer,
       setSelectedOffer,
       selectedProduct,

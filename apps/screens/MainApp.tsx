@@ -1,8 +1,9 @@
 // apps/screens/MainApp.tsx
 // Simple screen router based on AppContext's currentScreen state
 import React from 'react';
-import { View } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import { useAppContext } from '../shared/AppContext';
+import { ChevronLeft } from 'lucide-react-native';
 
 import { HomeScreen } from './HomeScreen';
 import { AuthScreen } from './AuthScreen';
@@ -21,8 +22,20 @@ import { NativeLabsScreen } from './NativeLabsScreen';
 import { VisaPaymentScreen } from './VisaPaymentScreen';
 import RegisterScreen from './RegisterScreen';
 
+// Screens that have their own full-screen header — back button is shown at top
+const SCREENS_WITH_HEADER = ['HOME'];
+
 export const MainApp: React.FC = () => {
-  const { currentScreen } = useAppContext();
+  const { currentScreen, goBack, canGoBack, isDarkMode } = useAppContext();
+
+  const showBackBtn = canGoBack && !SCREENS_WITH_HEADER.includes(currentScreen);
+
+  const colors = {
+    bg: isDarkMode ? 'rgba(22,15,43,0.92)' : 'rgba(255,255,255,0.92)',
+    text: isDarkMode ? '#FFFFFF' : '#120024',
+    border: isDarkMode ? 'rgba(124,77,255,0.35)' : 'rgba(124,77,255,0.25)',
+    icon: '#C78DFF',
+  };
 
   const renderScreen = () => {
     switch (currentScreen) {
@@ -59,15 +72,58 @@ export const MainApp: React.FC = () => {
       case 'VISA_PAYMENT':
         return <VisaPaymentScreen />;
       default:
-        return <AuthScreen />;
+        return <HomeScreen />;
     }
   };
 
   return (
     <View style={{ flex: 1 }}>
       {renderScreen()}
+
+      {/* Floating Back Button — visible on all inner screens */}
+      {showBackBtn && (
+        <TouchableOpacity
+          style={[
+            styles.backBtn,
+            {
+              backgroundColor: colors.bg,
+              borderColor: colors.border,
+            }
+          ]}
+          onPress={goBack}
+          activeOpacity={0.8}
+        >
+          <ChevronLeft size={18} color={colors.icon} strokeWidth={2.5} />
+          <Text style={[styles.backBtnText, { color: colors.text }]}>Back</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  backBtn: {
+    position: 'absolute',
+    top: Platform.OS === 'web' ? 14 : 44,
+    left: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    shadowColor: '#7C4DFF',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 9999,
+  },
+  backBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+});
 
 export default MainApp;
