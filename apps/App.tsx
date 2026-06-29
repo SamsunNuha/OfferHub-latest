@@ -1,9 +1,8 @@
 import { useContext } from 'react';
 import { View, Text, StyleSheet, Platform, SafeAreaView } from 'react-native';
-import { AppContext } from './shared/AppContext';
+import AppContext, { AppProvider } from './shared/AppContext';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
-import { AppProvider } from '../shared/AppContext';
 import RootNavigator from './navigation/RootNavigator';
 
 function NotificationBanner() {
@@ -62,4 +61,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-}

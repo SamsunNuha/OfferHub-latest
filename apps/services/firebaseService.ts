@@ -493,6 +493,17 @@ export const FirebaseService = {
     }
   },
 
+  async addBrand(brand: Brand): Promise<void> {
+    localDb.brands.unshift(brand);
+    if (fbConfigured) {
+      try {
+        await setDoc(doc(fbDb, 'brands', brand.name), brand);
+      } catch (e) {
+        console.error("Firestore add brand failed:", e);
+      }
+    }
+  },
+
   async placeOrder(
     userEmail: string,
     productNames: string,
@@ -620,6 +631,45 @@ export const FirebaseService = {
     }
   },
 
+  async addScanHistory(userEmail: string, scanData: any): Promise<void> {
+    const scanId = `scan_${Date.now()}`;
+    const payload = {
+      id: scanId,
+      userEmail: userEmail.toLowerCase(),
+      productName: scanData.productName,
+      brand: scanData.brand,
+      price: scanData.price,
+      confidenceScore: scanData.confidenceScore,
+      timestamp: new Date().toLocaleString(),
+    };
+
+    (localDb.scannerHistory as any[]).unshift(payload);
+
+    if (fbConfigured) {
+      try {
+        await setDoc(doc(fbDb, 'scan_history', scanId), payload);
+      } catch (e) {
+        console.error("Firestore save scan history failed:", e);
+      }
+    }
+  },
+
+  async getScanHistory(userEmail: string): Promise<any[]> {
+    const cleaned = userEmail.toLowerCase();
+    if (fbConfigured) {
+      try {
+        const q = query(collection(fbDb, 'scan_history'), where('userEmail', '==', cleaned));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          return snap.docs.map(d => d.data());
+        }
+      } catch (e) {
+        console.warn("Could not load scan history from Firestore:", e);
+      }
+    }
+    return (localDb.scannerHistory as any[]).filter(s => !s.userEmail || s.userEmail === cleaned);
+  },
+
   // ----------------------------------------------------
   // AUTOMATIC SEEDING ON REAL FIREBASE
   // ----------------------------------------------------
@@ -688,6 +738,26 @@ export const FirebaseService = {
           await setDoc(doc(fbDb, 'reviews', String(rev.id)), rev);
         }
         console.log("Firebase Firestore seeding completed successfully!");
+      } else {
+        // Sync new brands or brand logo changes to Firestore if it's already seeded
+        const brandsSnap = await getDocs(collection(fbDb, 'brands'));
+        const dbBrands = new Map<string, any>();
+        brandsSnap.forEach(d => {
+          dbBrands.set(d.id, d.data());
+        });
+
+        let updatedCount = 0;
+        for (const b of initialBrands) {
+          const existing = dbBrands.get(b.name);
+          if (!existing || existing.logo !== b.logo) {
+            console.log(`Syncing/Updating brand to Firestore: ${b.name}`);
+            await setDoc(doc(fbDb, 'brands', b.name), b);
+            updatedCount++;
+          }
+        }
+        if (updatedCount > 0) {
+          console.log(`Synced ${updatedCount} brands to Firestore.`);
+        }
       }
     } catch (err) {
       console.error("Failed to check or seed Firebase:", err);

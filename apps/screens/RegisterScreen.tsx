@@ -49,7 +49,7 @@ type FormData = yup.InferType<typeof schema>;
 type AccountType = 'user' | 'merchant' | 'admin';
 
 export default function RegisterScreen({ navigation }: any) {
-  const { navigateTo, isDarkMode, toggleDarkMode } = useAppContext();
+  const { navigateTo, isDarkMode, toggleDarkMode, register, registerRole } = useAppContext();
   const { width: SCREEN_W } = useWindowDimensions();
   const IS_DESKTOP = Platform.OS === 'web' && SCREEN_W > 768;
 
@@ -68,8 +68,13 @@ export default function RegisterScreen({ navigation }: any) {
     success: '#00E676',
   };
 
-  
-const [accountType, setAccountType] = useState<AccountType>('user');
+  const [accountType, setAccountType] = useState<AccountType>(
+    registerRole === 'MERCHANT' ? 'merchant' : registerRole === 'ADMIN' ? 'admin' : 'user'
+  );
+
+  React.useEffect(() => {
+    setAccountType(registerRole === 'MERCHANT' ? 'merchant' : registerRole === 'ADMIN' ? 'admin' : 'user');
+  }, [registerRole]);
   const [showCpw, setShowCpw] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -79,7 +84,7 @@ const [accountType, setAccountType] = useState<AccountType>('user');
   const [districtSearch, setDistrictSearch] = useState('');
 
   const { control, handleSubmit, watch, setValue, formState: { errors, isValid } } = useForm<FormData>({
-    resolver: yupResolver<FormData>(schema),
+    resolver: yupResolver(schema as any),
     mode: 'onChange',
     defaultValues: {
       fullName: '',
@@ -102,18 +107,21 @@ const [accountType, setAccountType] = useState<AccountType>('user');
     setLoading(true);
     setFirebaseError('');
     setSuccessMsg('');
+    const mappedRole = accountType === 'user' ? 'NORMAL' : accountType === 'merchant' ? 'MERCHANT' : 'ADMIN';
     try {
-      const cred = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      await setDoc(doc(db, 'users', cred.user.uid), {
-        fullName: data.fullName,
-        email: data.email,
-        phone: `+94${data.phone}`,
-        district: data.district,
-        role: accountType,
-        createdAt: new Date().toISOString(),
-      });
-      setSuccessMsg('Account created! Redirecting...');
-      setTimeout(() => navigateTo('AUTH'), 1500);
+      const res = await register(
+        data.fullName,
+        data.email,
+        mappedRole,
+        data.password,
+        data.district,
+        `+94${data.phone}`
+      );
+      if (res.success) {
+        setSuccessMsg(res.message || 'Account created successfully!');
+      } else {
+        setFirebaseError(res.message || 'Registration failed.');
+      }
     } catch (e: any) {
       setFirebaseError(e.message || 'Registration failed.');
     } finally {

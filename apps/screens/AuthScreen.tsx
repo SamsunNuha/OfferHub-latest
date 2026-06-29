@@ -47,7 +47,7 @@ export const AuthScreen: React.FC = () => {
   const { width: SCREEN_W } = useWindowDimensions();
   const IS_WEB_WIDE = Platform.OS === 'web' && SCREEN_W > 768;
 
-  const { isDarkMode, toggleDarkMode, login, register, navigateTo } = useAppContext();
+  const { isDarkMode, toggleDarkMode, login, register, navigateTo, registerRole } = useAppContext();
 
   const colors = {
     bg: isDarkMode ? '#060112' : '#F6F2FF',
@@ -70,7 +70,7 @@ export const AuthScreen: React.FC = () => {
     roleDefaultBorder: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(108,59,255,0.2)',
   };
 
-  const [isRegister, setIsRegister] = useState(false);
+  const [isRegister, setIsRegister] = useState(registerRole === 'MERCHANT');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
@@ -78,12 +78,21 @@ export const AuthScreen: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [district, setDistrict] = useState('');
   const [showDistrictMenu, setShowDistrictMenu] = useState(false);
-  const [role, setRole] = useState<'NORMAL' | 'MERCHANT' | 'ADMIN'>('NORMAL');
+  const [role, setRole] = useState<'NORMAL' | 'MERCHANT' | 'ADMIN'>(registerRole);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (registerRole === 'MERCHANT') {
+      setIsRegister(true);
+      setRole('MERCHANT');
+    } else {
+      setRole(registerRole);
+    }
+  }, [registerRole]);
 
   const handleSubmit = async () => {
     setErrorMsg(null);
@@ -516,7 +525,7 @@ export const AuthScreen: React.FC = () => {
           {isRegister ? (
             // Register: single centered wide card
             <View style={styles.registerWrapper}>
-              <RegisterForm />
+              {RegisterForm()}
             </View>
           ) : (
             // Sign In: split on desktop, single card on mobile
@@ -537,7 +546,7 @@ export const AuthScreen: React.FC = () => {
                   </Text>
                 </View>
               )}
-              <SignInForm />
+              {SignInForm()}
             </View>
           )}
 

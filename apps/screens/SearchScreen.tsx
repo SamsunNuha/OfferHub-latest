@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useAppContext } from '../shared/AppContext';
 import { useDimensions } from '../hooks/useDimensions';
+import { BRAND_LOGOS } from '../shared/brandLogos';
 import { Search, ArrowLeft, Tag, ArrowRight } from 'lucide-react-native';
 
 export const SearchScreen: React.FC = () => {
@@ -159,7 +160,9 @@ export const SearchScreen: React.FC = () => {
                         onPress={() => navigateTo('MARKETPLACE')}
                       >
                         <View style={[styles.badgeCircle, { backgroundColor: colors.surfaceVariant, overflow: 'hidden' }]}>
-                          {b.logo ? (
+                          {BRAND_LOGOS[b.name] ? (
+                            <Image source={BRAND_LOGOS[b.name]} style={{ width: '100%', height: '100%' }} />
+                          ) : b.logo ? (
                             <Image source={{ uri: b.logo }} style={{ width: '100%', height: '100%' }} />
                           ) : (
                             <Text style={{ color: colors.primary, fontSize: 12, fontWeight: 'bold' }}>🏢</Text>

@@ -6,11 +6,14 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppContext } from '../shared/AppContext';
+import { getProductNameKey } from '../shared/localization';
+import { BRAND_LOGOS } from '../shared/brandLogos';
+import { DISTRICT_LIST, scatterLocations } from '../utils/districts';
 import {
   Home, Tag, Zap, Star, User, Package, Heart, MapPin,
   ShoppingCart, Bell, Search, ChevronRight, Store,
   Settings, Moon, Sun, HelpCircle, MessageSquare,
-  Award, Truck, LogIn, X, TrendingUp, Clock,
+  Award, Truck, LogIn, X, TrendingUp, Clock, ChevronDown, Camera, Menu
 } from 'lucide-react-native';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -36,17 +39,31 @@ function getImg(key: any): any {
   return IMAGE_ASSETS.default;
 }
 
+function getBrandLogo(name: string): any {
+  if (!name) return null;
+  if (BRAND_LOGOS[name]) return BRAND_LOGOS[name];
+  const clean = name.toLowerCase().trim();
+  for (const key of Object.keys(BRAND_LOGOS)) {
+    const keyClean = key.toLowerCase().trim();
+    if (clean.includes(keyClean) || keyClean.includes(clean)) {
+      return BRAND_LOGOS[key];
+    }
+  }
+  return null;
+}
+
 // ─── Sidebar nav items ────────────────────────────────────────────────────────
 const NAV_SECTIONS = [
   {
     label: null,
     items: [
-      { id: 'HOME',       label: 'Home',        Icon: Home    },
-      { id: 'CATEGORIES', label: 'Categories',  Icon: Tag     },
-      { id: 'OFFERS',     label: 'All Offers',  Icon: Award   },
-      { id: 'FLASH',      label: 'Flash Deals', Icon: Zap,    badge: 'LIVE' },
-      { id: 'NEW',        label: 'New Arrivals',Icon: TrendingUp },
-      { id: 'TOPRATED',   label: 'Top Rated',   Icon: Star    },
+      { id: 'HOME',          label: 'Home',           Icon: Home    },
+      { id: 'VISUAL_SEARCH', label: 'AI Lens Scanner',Icon: Camera,  badge: 'NEW' },
+      { id: 'CATEGORIES',    label: 'Categories',     Icon: Tag     },
+      { id: 'OFFERS',        label: 'All Offers',     Icon: Award   },
+      { id: 'FLASH',         label: 'Flash Deals',    Icon: Zap,    badge: 'LIVE' },
+      { id: 'NEW',           label: 'New Arrivals',   Icon: TrendingUp },
+      { id: 'TOPRATED',      label: 'Top Rated',      Icon: Star    },
     ],
   },
   {
@@ -116,6 +133,7 @@ export const HomeScreen: React.FC = () => {
     liveAuctions, placeAuctionBid, addToCart, navigateTo,
     setSelectedProduct, setSelectedOffer,
     pushLogs, bannerNotification,
+    isDrawerOpen, setIsDrawerOpen, t
   } = useAppContext();
 
   const { width: WIN_W } = useWindowDimensions();
@@ -127,6 +145,9 @@ export const HomeScreen: React.FC = () => {
   const [searchQ, setSearchQ] = useState('');
   const [notifOpen, setNotifOpen] = useState(false);
   const [addedIds, setAddedIds] = useState<Set<number>>(new Set());
+  const [selectedDistrict, setSelectedDistrict] = useState('Colombo');
+  const [showDistrictModal, setShowDistrictModal] = useState(false);
+  const [districtSearch, setDistrictSearch] = useState('');
 
   const cartCount = Object.values(cart).reduce((s, q) => s + q, 0);
   const notifCount = pushLogs?.length ?? 0;
@@ -160,86 +181,30 @@ export const HomeScreen: React.FC = () => {
     setTimeout(() => setAddedIds(prev => { const n = new Set(prev); n.delete(product.id); return n; }), 1500);
   };
 
-  // ── SIDEBAR ────────────────────────────────────────────────────────────────
-  const Sidebar = () => (
-    <View style={styles.sidebar}>
-      {/* Logo */}
-      <TouchableOpacity style={styles.sidebarLogo} onPress={() => handleNav('HOME')}>
-        <LinearGradient colors={C.gradient} style={styles.logoIcon} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-          <ShoppingCart size={16} color="#fff" />
-        </LinearGradient>
-        <View>
-          <Text style={styles.logoTitle}>OfferHub</Text>
-          <Text style={styles.logoSub}>Sri Lanka</Text>
-        </View>
-      </TouchableOpacity>
-
-      {/* Nav */}
-      <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-        {NAV_SECTIONS.map((sec, si) => (
-          <View key={si} style={{ marginBottom: 8 }}>
-            {sec.label && <Text style={styles.navSectionLabel}>{sec.label}</Text>}
-            {sec.items.map(item => {
-              const active = activeScreen === item.id;
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[styles.navItem, active && styles.navItemActive]}
-                  onPress={() => handleNav(item.id)}
-                >
-                  <item.Icon size={16} color={active ? C.accent : C.sub} />
-                  <Text style={[styles.navItemText, { color: active ? C.accent : C.sub }]}>{item.label}</Text>
-                  {(item as any).badge && (
-                    <View style={styles.liveBadge}>
-                      <Text style={styles.liveBadgeText}>{(item as any).badge}</Text>
-                    </View>
-                  )}
-                  {item.id === 'WISHLIST' && (
-                    <View style={styles.countBadge}><Text style={styles.countBadgeText}>12</Text></View>
-                  )}
-                  {item.id === 'CART' && cartCount > 0 && (
-                    <View style={styles.countBadge}><Text style={styles.countBadgeText}>{cartCount}</Text></View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ))}
-
-        {/* Become Seller CTA */}
-        <LinearGradient colors={['#3E1D7A', '#6C3DBE']} style={styles.sellerCta} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-          <Store size={18} color="#fff" style={{ marginBottom: 4 }} />
-          <Text style={styles.sellerCtaTitle}>Become a Seller</Text>
-          <Text style={styles.sellerCtaSub}>Grow your business with OfferHub</Text>
-          <TouchableOpacity style={styles.sellerCtaBtn} onPress={() => handleNav('MERCHANT')}>
-            <Text style={styles.sellerCtaBtnText}>Join Now</Text>
-          </TouchableOpacity>
-        </LinearGradient>
-
-        {/* Dark mode toggle */}
-        <TouchableOpacity style={styles.darkToggle} onPress={toggleDarkMode}>
-          {isDarkMode
-            ? <Sun size={15} color={C.accent} />
-            : <Moon size={15} color={C.accent} />}
-          <Text style={styles.darkToggleText}>Dark Mode</Text>
-          <View style={[styles.toggleTrack, isDarkMode && { backgroundColor: C.accent }]}>
-            <View style={[styles.toggleThumb, isDarkMode && { alignSelf: 'flex-end' }]} />
-          </View>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
+  const nearbyStores = scatterLocations(selectedDistrict);
+  const filteredDistricts = DISTRICT_LIST.filter(d =>
+    d.toLowerCase().includes(districtSearch.toLowerCase())
   );
+
+
 
   // ── MAIN CONTENT ───────────────────────────────────────────────────────────
   const Content = () => (
     <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
 
       {/* ── Hero Banner ── */}
-      <View style={styles.heroBanner}>
+      <View style={[styles.heroBanner, { aspectRatio: IS_DESKTOP ? 1920/500 : 750/300 }]}>
         <Image source={getImg(banners[activeBanner].store)} style={StyleSheet.absoluteFill as any} resizeMode="cover" />
         <LinearGradient colors={['transparent', 'rgba(9,5,15,0.9)']} style={StyleSheet.absoluteFill as any} />
         <View style={styles.heroContent}>
-          <View style={styles.heroTag}><Text style={styles.heroTagText}>{banners[activeBanner].tag}</Text></View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            {getBrandLogo(banners[activeBanner].store) && (
+              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } }}>
+                <Image source={getBrandLogo(banners[activeBanner].store)} style={{ width: 30, height: 30 }} resizeMode="contain" />
+              </View>
+            )}
+            <View style={[styles.heroTag, { marginBottom: 0, alignSelf: 'center' }]}><Text style={styles.heroTagText}>{banners[activeBanner].tag}</Text></View>
+          </View>
           <Text style={styles.heroTitle}>{banners[activeBanner].title}</Text>
           <Text style={styles.heroSub}>{banners[activeBanner].sub}</Text>
           <TouchableOpacity style={styles.heroBtn} onPress={() => navigateTo('OFFERS')}>
@@ -262,6 +227,56 @@ export const HomeScreen: React.FC = () => {
             </TouchableOpacity>
           ))}
         </View>
+      </View>
+
+      {/* ── Nearby Offers in District ── */}
+      <View style={styles.sectionCard}>
+        <View style={styles.sectionHeader}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.sectionEmoji}>📍</Text>
+            <Text style={styles.sectionTitle}>Nearby Offers in {selectedDistrict}</Text>
+          </View>
+          <TouchableOpacity onPress={() => setShowDistrictModal(true)}>
+            <Text style={styles.viewAll}>Change District →</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.sectionSub}>Verified stores &amp; active deals near {selectedDistrict}</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+          {nearbyStores.map((store, idx) => (
+            <View key={store.id} style={styles.nearbyCard}>
+              <LinearGradient
+                colors={[BRAND_COLORS[idx % BRAND_COLORS.length] + 'CC', BRAND_COLORS[idx % BRAND_COLORS.length] + '44']}
+                style={styles.nearbyCardHeader}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              >
+                {getBrandLogo(store.name) ? (
+                  <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' }}>
+                    <Image source={getBrandLogo(store.name)} style={{ width: 20, height: 20 }} resizeMode="contain" />
+                  </View>
+                ) : (
+                  <Text style={styles.nearbyCatEmoji}>
+                    {store.category === 'Grocery' ? '🛒' : store.category === 'Electronics' ? '🔌' : store.category === 'Fashion' ? '👗' : store.category === 'Restaurants' ? '🍕' : '💊'}
+                  </Text>
+                )}
+                <View style={styles.nearbyRatingBadge}>
+                  <Text style={styles.nearbyRatingText}>⭐ {store.rating}</Text>
+                </View>
+              </LinearGradient>
+              <View style={{ padding: 10 }}>
+                <Text style={styles.nearbyCat}>{store.category.toUpperCase()}</Text>
+                <Text style={styles.nearbyName} numberOfLines={2}>{store.name}</Text>
+                <Text style={styles.nearbyAddr} numberOfLines={1}>📍 {store.address}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6 }}>
+                  {store.offers.map((offer, oi) => (
+                    <View key={oi} style={styles.nearbyOfferTag}>
+                      <Text style={styles.nearbyOfferText}>{offer}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+          ))}
+        </ScrollView>
       </View>
 
       {/* ── Flash Deals + Live Auctions Row ── */}
@@ -371,18 +386,36 @@ export const HomeScreen: React.FC = () => {
             { id: 5, name: 'Singer', category: 'Electronics' },
             { id: 6, name: 'Daraz', category: 'Online Store' },
             { id: 7, name: 'Bata', category: 'Footwear' },
-          ]).map((brand: any, idx) => (
-            <TouchableOpacity key={brand.id} style={styles.brandPill} onPress={() => navigateTo('BRANDS')}>
-              <View style={[styles.brandIcon, { backgroundColor: BRAND_COLORS[idx % BRAND_COLORS.length] }]}>
-                <Text style={styles.brandInitial}>{(brand.name || 'B')[0]}</Text>
-              </View>
-              <Text style={styles.brandName} numberOfLines={1}>{brand.name}</Text>
-              <Text style={styles.brandCat} numberOfLines={1}>{brand.category}</Text>
-              <TouchableOpacity style={styles.followBtn}>
-                <Text style={styles.followBtnText}>Follow</Text>
+          ]).map((brand: any, idx) => {
+            const localLogo = getBrandLogo(brand.name);
+            return (
+              <TouchableOpacity key={brand.id} style={styles.brandPill} onPress={() => navigateTo('BRANDS')}>
+                <View style={[
+                  styles.brandIcon, 
+                  { 
+                    backgroundColor: (localLogo || brand.logo) ? '#fff' : BRAND_COLORS[idx % BRAND_COLORS.length],
+                    borderWidth: (localLogo || brand.logo) ? 1 : 0,
+                    borderColor: C.border,
+                    padding: (localLogo || brand.logo) ? 4 : 0,
+                    overflow: 'hidden'
+                  }
+                ]}>
+                  {localLogo ? (
+                    <Image source={localLogo} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+                  ) : brand.logo ? (
+                    <Image source={{ uri: brand.logo }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+                  ) : (
+                    <Text style={styles.brandInitial}>{(brand.name || 'B')[0]}</Text>
+                  )}
+                </View>
+                <Text style={styles.brandName} numberOfLines={1}>{brand.name}</Text>
+                <Text style={styles.brandCat} numberOfLines={1}>{brand.category}</Text>
+                <TouchableOpacity style={styles.followBtn}>
+                  <Text style={styles.followBtnText}>Follow</Text>
+                </TouchableOpacity>
               </TouchableOpacity>
-            </TouchableOpacity>
-          ))}
+            );
+          })}
         </ScrollView>
       </View>
 
@@ -391,10 +424,10 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.sectionHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Text style={styles.sectionEmoji}>🤖</Text>
-            <Text style={styles.sectionTitle}>AI Lanka Smart Recommendations</Text>
+            <Text style={styles.sectionTitle}>{t('ai_smart_recommendations')}</Text>
           </View>
           <TouchableOpacity onPress={() => navigateTo('PRODUCTS')}>
-            <Text style={styles.viewAll}>View All →</Text>
+            <Text style={styles.viewAll}>{t('view_all')}</Text>
           </TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
@@ -408,7 +441,7 @@ export const HomeScreen: React.FC = () => {
                 )}
                 <TouchableOpacity style={styles.wishBtn}><Heart size={13} color={C.sub} /></TouchableOpacity>
                 <View style={{ padding: 8 }}>
-                  <Text style={styles.productName} numberOfLines={2}>{p.name}</Text>
+                  <Text style={styles.productName} numberOfLines={2}>{t(getProductNameKey(p.id)) || p.name}</Text>
                   <Text style={styles.productStore}>{p.storeName}</Text>
                   <View style={styles.productPriceRow}>
                     <Text style={styles.productPrice}>LKR {Math.floor(p.price || 0).toLocaleString()}</Text>
@@ -430,10 +463,10 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.sectionHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Text style={styles.sectionEmoji}>🎯</Text>
-            <Text style={styles.sectionTitle}>Best Local Platform Deals</Text>
+            <Text style={styles.sectionTitle}>{t('best_local_platform_deals')}</Text>
           </View>
           <TouchableOpacity onPress={() => navigateTo('OFFERS')}>
-            <Text style={styles.viewAll}>View All Deals →</Text>
+            <Text style={styles.viewAll}>{t('view_all_deals')}</Text>
           </TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
@@ -443,11 +476,15 @@ export const HomeScreen: React.FC = () => {
               style={styles.dealCard}
               onPress={() => { setSelectedOffer(deal); navigateTo('OFFER_DETAIL'); }}
             >
-              <LinearGradient colors={[BRAND_COLORS[idx % BRAND_COLORS.length] + 'AA', C.card]} style={styles.dealHeader} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                {deal.discountPercent && (
-                  <Text style={styles.dealDiscount}>{deal.discountPercent}% OFF</Text>
-                )}
-              </LinearGradient>
+              <View style={[styles.dealHeader, { overflow: 'hidden' }]}>
+                <Image source={getImg(deal.storeName)} style={StyleSheet.absoluteFill as any} resizeMode="cover" />
+                <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={StyleSheet.absoluteFill as any} />
+                <View style={{ flex: 1, justifyContent: 'flex-end', padding: 8 }}>
+                  {deal.discountPercent && (
+                    <Text style={styles.dealDiscount}>{deal.discountPercent}% OFF</Text>
+                  )}
+                </View>
+              </View>
               <View style={{ padding: 10 }}>
                 <Text style={styles.dealStore} numberOfLines={1}>{deal.storeName}</Text>
                 <Text style={styles.dealTitle} numberOfLines={3}>{deal.title || deal.name}</Text>
@@ -467,11 +504,18 @@ export const HomeScreen: React.FC = () => {
     <View style={styles.root}>
       {/* ── TOP NAVBAR ── */}
       <View style={styles.navbar}>
+        {/* Leftmost hamburger menu toggle on mobile */}
+        {!IS_DESKTOP && (
+          <TouchableOpacity style={styles.iconBtn} onPress={() => setIsDrawerOpen(true)}>
+            <Menu size={18} color={C.text} />
+          </TouchableOpacity>
+        )}
+
         {/* Left: location */}
-        <TouchableOpacity style={styles.locationPill}>
+        <TouchableOpacity style={styles.locationPill} onPress={() => setShowDistrictModal(true)}>
           <MapPin size={12} color={C.accent} />
-          <Text style={styles.locationText}>{currentUser?.district || 'Colombo, Sri Lanka'}</Text>
-          <Text style={{ color: C.sub, fontSize: 10 }}>▾</Text>
+          <Text style={styles.locationText}>{selectedDistrict}, Sri Lanka</Text>
+          <ChevronDown size={10} color={C.sub} />
         </TouchableOpacity>
 
         {/* Centre: search */}
@@ -488,6 +532,11 @@ export const HomeScreen: React.FC = () => {
 
         {/* Right: icons */}
         <View style={styles.navRight}>
+          {/* AI Camera Scanner */}
+          <TouchableOpacity style={[styles.iconBtn, { backgroundColor: C.accentSoft, borderColor: C.accent }]} onPress={() => navigateTo('VISUAL_SEARCH')}>
+            <Camera size={18} color={C.accent} />
+          </TouchableOpacity>
+
           {/* Cart */}
           <TouchableOpacity style={styles.iconBtn} onPress={() => currentUser ? navigateTo('CART') : navigateTo('AUTH')}>
             <ShoppingCart size={18} color={C.text} />
@@ -519,9 +568,8 @@ export const HomeScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* ── BODY (sidebar + content) ── */}
+      {/* ── BODY (content only, sidebar is rendered globally) ── */}
       <View style={styles.body}>
-        <Sidebar />
         <Content />
       </View>
 
@@ -543,6 +591,56 @@ export const HomeScreen: React.FC = () => {
               {(!pushLogs || pushLogs.length === 0) && (
                 <Text style={styles.notifEmpty}>No notifications yet</Text>
               )}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── District Selector Modal ── */}
+      <Modal visible={showDistrictModal} transparent animationType="slide" onRequestClose={() => setShowDistrictModal(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowDistrictModal(false)}>
+          <View style={[styles.districtModal]} onStartShouldSetResponder={() => true}>
+            <View style={styles.notifHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MapPin size={16} color={C.accent} />
+                <Text style={styles.notifTitle}>Select District</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowDistrictModal(false)}><X size={18} color={C.sub} /></TouchableOpacity>
+            </View>
+            {/* District search */}
+            <View style={[styles.districtSearchBox]}>
+              <Search size={14} color={C.sub} />
+              <TextInput
+                style={styles.districtSearchInput}
+                placeholder="Search district..."
+                placeholderTextColor={C.sub}
+                value={districtSearch}
+                onChangeText={setDistrictSearch}
+              />
+            </View>
+            <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
+              {filteredDistricts.map(district => (
+                <TouchableOpacity
+                  key={district}
+                  style={[
+                    styles.districtRow,
+                    selectedDistrict === district && { backgroundColor: C.accentSoft }
+                  ]}
+                  onPress={() => {
+                    setSelectedDistrict(district);
+                    setDistrictSearch('');
+                    setShowDistrictModal(false);
+                  }}
+                >
+                  <MapPin size={13} color={selectedDistrict === district ? C.accent : C.sub} />
+                  <Text style={[styles.districtRowText, { color: selectedDistrict === district ? C.accent : C.text }]}>
+                    {district}
+                  </Text>
+                  {selectedDistrict === district && (
+                    <View style={styles.districtActiveDot} />
+                  )}
+                </TouchableOpacity>
+              ))}
             </ScrollView>
           </View>
         </TouchableOpacity>
@@ -604,8 +702,8 @@ const styles = StyleSheet.create({
   content:          { flex: 1, backgroundColor: C.bg },
 
   // Hero Banner
-  heroBanner:       { height: 240, margin: 12, borderRadius: 14, overflow: 'hidden', position: 'relative' },
-  heroContent:      { position: 'absolute', bottom: 24, left: 24, right: 80 },
+  heroBanner:       { margin: 12, borderRadius: 14, overflow: 'hidden', position: 'relative' },
+  heroContent:      { position: 'absolute', bottom: 24, left: 56, right: 80 },
   heroTag:          { backgroundColor: 'rgba(168,95,255,0.9)', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 6 },
   heroTagText:      { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   heroTitle:        { color: '#fff', fontSize: 22, fontWeight: '900', lineHeight: 26 },
@@ -681,7 +779,7 @@ const styles = StyleSheet.create({
 
   // Deals
   dealCard:         { width: 160, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.border, marginRight: 10, overflow: 'hidden' },
-  dealHeader:       { height: 60, justifyContent: 'flex-end', padding: 8 },
+  dealHeader:       { height: 60, justifyContent: 'flex-end' },
   dealDiscount:     { color: '#fff', fontWeight: '900', fontSize: 18 },
   dealStore:        { color: C.accent, fontSize: 10, fontWeight: '700' },
   dealTitle:        { color: C.text, fontSize: 11, fontWeight: '600', marginTop: 4, lineHeight: 15 },
@@ -695,4 +793,23 @@ const styles = StyleSheet.create({
   notifItem:        { flexDirection: 'row', alignItems: 'flex-start', padding: 12, borderBottomWidth: 1, borderBottomColor: C.border },
   notifText:        { color: C.sub, fontSize: 12, flex: 1, lineHeight: 16 },
   notifEmpty:       { color: C.sub, fontSize: 12, textAlign: 'center', padding: 20 },
+
+  // Nearby Offers & District Modal
+  nearbyCard:         { width: 170, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.border, marginRight: 10, overflow: 'hidden' },
+  nearbyCardHeader:   { height: 44, padding: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  nearbyCatEmoji:     { fontSize: 18 },
+  nearbyRatingBadge:  { backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
+  nearbyRatingText:   { color: '#FFC107', fontSize: 9, fontWeight: '800' },
+  nearbyCat:          { color: C.accent, fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
+  nearbyName:         { color: C.text, fontSize: 11, fontWeight: '700', marginTop: 2 },
+  nearbyAddr:         { color: C.sub, fontSize: 9, marginTop: 2 },
+  nearbyOfferTag:     { backgroundColor: C.accentSoft, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginRight: 4 },
+  nearbyOfferText:    { color: C.accent, fontSize: 9, fontWeight: '700' },
+
+  districtModal:      { width: 320, maxHeight: 460, backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: C.border, overflow: 'hidden', alignSelf: 'center', marginTop: 'auto', marginBottom: 'auto' },
+  districtSearchBox:  { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 8, margin: 10, paddingHorizontal: 10, height: 36, borderWidth: 1, borderColor: C.border, gap: 6 },
+  districtSearchInput:{ flex: 1, color: C.text, fontSize: 12 },
+  districtRow:        { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: C.border },
+  districtRowText:    { fontSize: 13, fontWeight: '600', flex: 1 },
+  districtActiveDot:  { width: 8, height: 8, borderRadius: 4, backgroundColor: C.accent },
 });

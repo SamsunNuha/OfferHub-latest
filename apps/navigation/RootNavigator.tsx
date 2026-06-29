@@ -2,9 +2,9 @@
 import React from 'react';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { NavigationContainer } from '@react-navigation/native';
-import HomeScreen from '../screens/HomeScreen';
+import { HomeScreen } from '../screens/HomeScreen';
 import RegisterScreen from '../screens/RegisterScreen';
-import AdminPanelScreen from '../screens/AdminPanelScreen';
+import { AdminPanelScreen } from '../screens/AdminPanelScreen';
 import { View, Text, StyleSheet } from 'react-native';
 import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
 

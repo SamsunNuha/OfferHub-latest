@@ -1,0 +1,150 @@
+const fs = require('fs');
+const path = require('path');
+const https = require('https');
+
+const mockDbPath = path.join(__dirname, 'apps', 'shared', 'mockDb.ts');
+const assetsDir = path.join(__dirname, 'apps', 'assets', 'brand_logos');
+
+if (!fs.existsSync(assetsDir)) {
+  fs.mkdirSync(assetsDir, { recursive: true });
+}
+
+// Read mockDb.ts
+const content = fs.readFileSync(mockDbPath, 'utf8');
+
+// Extract initialBrands array content
+const startMarker = 'export const initialBrands: Brand[] = [';
+const startIndex = content.indexOf(startMarker);
+if (startIndex === -1) {
+  console.error("Could not find initialBrands in mockDb.ts");
+  process.exit(1);
+}
+
+// Find matching closing bracket ]; for the array
+let bracketCount = 1;
+let endIndex = startIndex + startMarker.length;
+while (bracketCount > 0 && endIndex < content.length) {
+  if (content[endIndex] === '[') bracketCount++;
+  else if (content[endIndex] === ']') bracketCount--;
+  endIndex++;
+}
+
+const brandsSub = content.slice(startIndex, endIndex);
+
+// Parse brand name and logo
+const brandRegex = /name:\s*"([^"]+)"[\s\S]*?logo:\s*"([^"]+)"/g;
+let match;
+const brands = [];
+while ((match = brandRegex.exec(brandsSub)) !== null) {
+  brands.push({ name: match[1], logoUrl: match[2] });
+}
+
+console.log(`Found ${brands.length} brands in mockDb.ts`);
+
+const downloadedBrands = [];
+
+function sanitizeFileName(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+}
+
+function getDownloadUrl(brand) {
+  const { name, logoUrl } = brand;
+  // If it's clearbit, convert to Google Favicon API
+  if (logoUrl.includes('logo.clearbit.com')) {
+    const domain = logoUrl.split('logo.clearbit.com/')[1];
+    return `https://www.google.com/s2/favicons?sz=128&domain=${domain}`;
+  }
+  return logoUrl;
+}
+
+function downloadLogo(brand, index) {
+  if (index >= brands.length) {
+    generateMappingFile();
+    return;
+  }
+
+  const { name } = brand;
+  const fileName = `${sanitizeFileName(name)}.png`;
+  const filePath = path.join(assetsDir, fileName);
+
+  // If the brand is Abans and we already have a file, skip downloading to keep the user's uploaded logo!
+  if (name.toLowerCase() === 'abans' && fs.existsSync(filePath)) {
+    console.log(`[${index + 1}/${brands.length}] Keeping existing custom logo for ${name}.`);
+    downloadedBrands.push({ name, fileName });
+    setTimeout(() => downloadLogo(brands[index + 1], index + 1), 10);
+    return;
+  }
+
+  const targetUrl = getDownloadUrl(brand);
+  console.log(`[${index + 1}/${brands.length}] Downloading logo for ${name} from ${targetUrl}...`);
+
+  const request = https.get(targetUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
+    }
+  }, (response) => {
+    // If we get a redirect (like Google Favicon API does sometimes), follow it
+    if (response.statusCode === 301 || response.statusCode === 302) {
+      const redirectUrl = response.headers.location;
+      console.log(`Following redirect to: ${redirectUrl}`);
+      const redirectRequest = https.get(redirectUrl, (res) => {
+        if (res.statusCode === 200) {
+          const fileStream = fs.createWriteStream(filePath);
+          res.pipe(fileStream);
+          fileStream.on('finish', () => {
+            fileStream.close();
+            console.log(`Successfully saved ${name} logo via redirect.`);
+            downloadedBrands.push({ name, fileName });
+            setTimeout(() => downloadLogo(brands[index + 1], index + 1), 50);
+          });
+        } else {
+          console.warn(`Failed to download ${name} logo on redirect. Status: ${res.statusCode}`);
+          setTimeout(() => downloadLogo(brands[index + 1], index + 1), 50);
+        }
+      });
+      redirectRequest.on('error', (err) => {
+        console.error(`Error on redirect download for ${name}:`, err.message);
+        setTimeout(() => downloadLogo(brands[index + 1], index + 1), 50);
+      });
+      return;
+    }
+
+    if (response.statusCode === 200) {
+      const fileStream = fs.createWriteStream(filePath);
+      response.pipe(fileStream);
+      fileStream.on('finish', () => {
+        fileStream.close();
+        console.log(`Successfully saved ${name} logo.`);
+        downloadedBrands.push({ name, fileName });
+        setTimeout(() => downloadLogo(brands[index + 1], index + 1), 50);
+      });
+    } else {
+      console.warn(`Failed to download ${name} logo. HTTP Status: ${response.statusCode}`);
+      setTimeout(() => downloadLogo(brands[index + 1], index + 1), 50);
+    }
+  });
+
+  request.on('error', (err) => {
+    console.error(`Error downloading ${name} logo:`, err.message);
+    setTimeout(() => downloadLogo(brands[index + 1], index + 1), 50);
+  });
+}
+
+function generateMappingFile() {
+  const mappingFilePath = path.join(__dirname, 'apps', 'shared', 'brandLogos.ts');
+  let fileContent = `// This file is auto-generated by download_logos.js\n\n`;
+  fileContent += `export const BRAND_LOGOS: Record<string, any> = {\n`;
+
+  downloadedBrands.forEach(b => {
+    fileContent += `  "${b.name}": require('../assets/brand_logos/${b.fileName}'),\n`;
+  });
+
+  fileContent += `};\n`;
+
+  fs.writeFileSync(mappingFilePath, fileContent, 'utf8');
+  console.log(`Generated logo mapping file at ${mappingFilePath}`);
+  console.log(`Total downloaded logos: ${downloadedBrands.length}`);
+}
+
+// Start download
+downloadLogo(brands[0], 0);

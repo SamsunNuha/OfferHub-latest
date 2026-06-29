@@ -20,6 +20,8 @@ export interface AppContextType {
   navigateTo: (screen: string) => void;
   goBack: () => void;
   canGoBack: boolean;
+  isDrawerOpen: boolean;
+  setIsDrawerOpen: (open: boolean) => void;
 
   // Selected details
   selectedOffer: Offer | null;
@@ -33,6 +35,8 @@ export interface AppContextType {
   authReason: string;
   showAuthDialog: boolean;
   setShowAuthDialog: (show: boolean, reason?: string) => void;
+  registerRole: 'NORMAL' | 'MERCHANT' | 'ADMIN';
+  setRegisterRole: (role: 'NORMAL' | 'MERCHANT' | 'ADMIN') => void;
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
   register: (name: string, email: string, role: 'NORMAL' | 'MERCHANT' | 'ADMIN', password?: string, district?: string, phone?: string) => Promise<{ success: boolean; message: string }>;
   signOut: () => Promise<void>;
@@ -57,6 +61,8 @@ export interface AppContextType {
   approveProduct: (id: number) => Promise<void>;
   addProduct: (product: Product) => Promise<void>;
   deleteProduct: (id: number) => Promise<void>;
+  addBrand: (brand: Brand) => Promise<void>;
+  toggleFollowBrand: (brandName: string) => Promise<void>;
 
   // Shopping Cart & Favorites
   cart: Record<number, number>; // productId -> quantity
@@ -140,6 +146,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Screen Router
   const [currentScreen, setCurrentScreen] = useState('HOME');
   const [screenHistory, setScreenHistory] = useState<string[]>([]);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   
   // Details Selected
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
@@ -149,6 +156,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authReason, setAuthReason] = useState('');
   const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [registerRole, setRegisterRole] = useState<'NORMAL' | 'MERCHANT' | 'ADMIN'>('NORMAL');
 
   // Core Data Lists
   const [products, setProducts] = useState<Product[]>([]);
@@ -296,6 +304,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const seedAndSyncFirebase = async () => {
     if (FirebaseService.isFirebaseAvailable()) {
       await FirebaseService.seedFirebaseIfNeeded();
+      await refreshData();
     }
   };
 
@@ -367,8 +376,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const navigateTo = (screen: string) => {
+    // Handle Merchant / Become Seller redirect to Register page if not signed in or not merchant
+    if (screen === 'MERCHANT' || screen === 'BUSINESS_DASHBOARD') {
+      if (!currentUser) {
+        setRegisterRole('MERCHANT');
+        setScreenHistory(prev => [...prev, currentScreen]);
+        setCurrentScreen('REGISTER');
+        return;
+      }
+      if (currentUser.role !== 'MERCHANT' && currentUser.role !== 'ADMIN') {
+        // If logged in as normal user, auto upgrade to merchant role so they can add products/offers
+        currentUser.role = 'MERCHANT';
+        FirebaseService.updateUser(currentUser);
+      }
+      setScreenHistory(prev => [...prev, currentScreen]);
+      setCurrentScreen('BUSINESS_DASHBOARD');
+      return;
+    }
+
     // Auth guards
-    const restricted = ['CART', 'CHECKOUT', 'LOYALTY', 'PROFILE', 'BUSINESS_DASHBOARD', 'ADMIN_PANEL', 'VISA_PAYMENT'];
+    const restricted = ['CART', 'CHECKOUT', 'LOYALTY', 'PROFILE', 'ADMIN_PANEL', 'VISA_PAYMENT'];
     if (!currentUser && restricted.includes(screen)) {
       setAuthReason(screen.toLowerCase());
       setShowAuthDialog(true);
@@ -497,6 +524,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteProduct = async (id: number) => {
     await FirebaseService.deleteProduct(id);
     refreshData();
+  };
+
+  const addBrand = async (brand: Brand) => {
+    await FirebaseService.addBrand(brand);
+    refreshData();
+  };
+
+  const toggleFollowBrand = async (brandName: string) => {
+    if (!currentUser) {
+      setAuthReason('follow');
+      setShowAuthDialog(true);
+      return;
+    }
+    const updatedBrands = brands.map(b => {
+      if (b.name === brandName) {
+        const nextFollowed = !b.isFollowed;
+        const updated = {
+          ...b,
+          isFollowed: nextFollowed,
+          followerCount: b.followerCount + (nextFollowed ? 1 : -1)
+        };
+        FirebaseService.addBrand(updated);
+        return updated;
+      }
+      return b;
+    });
+    setBrands(updatedBrands);
   };
 
   // Cart & Favorites
@@ -927,6 +981,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       navigateTo,
       goBack,
       canGoBack,
+      isDrawerOpen,
+      setIsDrawerOpen,
       selectedOffer,
       setSelectedOffer,
       selectedProduct,
@@ -936,6 +992,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       authReason,
       showAuthDialog,
       setShowAuthDialog: handleSetShowAuthDialog,
+      registerRole,
+      setRegisterRole,
       login,
       register,
       signOut,
@@ -956,6 +1014,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       approveProduct,
       addProduct,
       deleteProduct,
+      addBrand,
+      toggleFollowBrand,
       cart,
       addToCart,
       decreaseCart,

@@ -28,7 +28,13 @@ export const Translations: Record<AppLanguage, Record<string, string>> = {
     lang_en: "English (UK)",
     lang_si: "සිංහල (Sinhala)",
     lang_ta: "தமிழ் (Tamil)",
-    scanner_title: "Camera AI Scan Simulator"
+    scanner_title: "Camera AI Scan Simulator",
+    // Sample product names (extend as needed)
+    product_name_1: "Apple iPhone 14",
+    product_name_2: "Samsung Galaxy S23",
+    product_name_3: "Sony Headphones",
+    product_name_4: "Dell Laptop",
+    product_name_5: "Nike Sneakers",
   },
   SI: {
     app_name: "ඕෆර්හබ් ශ්‍රී ලංකා",
@@ -52,12 +58,17 @@ export const Translations: Record<AppLanguage, Record<string, string>> = {
     company_admin_dashboard: "සමාගම් පරිපාලක උපකරණ පුවරුව",
     company_admin_desc: "නිෂ්පාදන/වට්ටම් කළමනාකරණය කරන්න, ඇණවුම් ඉතිහාසය පරීක්ෂා කරන්න, සහ ප්‍රවර්ධන පළ කරන්න.",
     developer_sandbox: "සංවර්ධක සැන්ඩ්බොක්ස් සිමියුලේටරය",
-    sandbox_desc: "විවිධ පරිශීලක භූමිකාවන් සජීවීව නිරූපණය කිරීමට පිවිසුම් ඉක්මනින් මාරු කරන්න:",
+    sandbox_desc: "විවිධ පරිශීලක භූමිකා සජීවීව නිරූපණය කිරීමට පිවිසුම් ඉක්මනින් මාරු කරන්න:",
     sign_out: "ගිණුමෙන් ඉවත් වන්න",
     lang_en: "English (UK)",
     lang_si: "සිංහල (Sinhala)",
     lang_ta: "தமிழ் (Tamil)",
-    scanner_title: "කැමරා AI පරිලෝකන සිමියුලේටරය"
+    scanner_title: "කැමරා AI පරිලෝකන සිමියුලේටරය",
+    product_name_1: "ඇපල් iPhone 14",
+    product_name_2: "සැම්සං Galaxy S23",
+    product_name_3: "සෝනි හෙඩ්ෆොන්",
+    product_name_4: "ඩෙල් ලැප්ටොප්",
+    product_name_5: "නයික් ස්නික්ස්",
   },
   TA: {
     app_name: "ஆஃபர்ஹப் இலங்கை",
@@ -79,15 +90,20 @@ export const Translations: Record<AppLanguage, Record<string, string>> = {
     super_admin_console: "சூப்பர் அட்மின் கன்சோல் போர்ட்டல்",
     super_admin_desc: "பிராண்டுகளை அங்கீகரிக்கவும், நேரடி விற்பனையை கண்காணிக்கவும் மற்றும் பகுப்பாய்வு அறிக்கைகளை அணுகவும்.",
     company_admin_dashboard: "நிறுவனத்தின் நிர்வாக டாஷ்போர்டு",
-    company_admin_desc: "தயாரிப்புகள்/තල්ලුපටිකල නිர்வகිකවම්, ஆர்டர் வரலாறுகளை கண்காணிக்கவும், சந்தைப்படுத்தல் பிரச்சாரங்களை இடுகையிடவும்.",
+    company_admin_desc: "தயாரிப்புகள்/තල්ලුපටිකල නිර்வகිකවම්, ஆர்டர் வரலாறுகளை கண்காணிக்கவும், சந்தைப்படுத்தல் பிரச்சாரங்களை இடுகையிடவும்.",
     developer_sandbox: "டெவலப்பர் சாண்ட்பாக்ஸ் சிமுலேட்டர்",
     sandbox_desc: "பல்வேறு பயனர் பாத்திரங்களை உடனடியாக டெமோ செய்ய உள்நுழைவு அடையாளங்களை மாற்றவும்:",
     sign_out: "கணக்கிலிருந்து வெளியேறவும்",
     lang_en: "English (UK)",
     lang_si: "සිංහල (Sinhala)",
     lang_ta: "தமிழ் (Tamil)",
-    scanner_title: "கேமரா AI ஸ்கேன் சிமுலேட்டர்"
-  }
+    scanner_title: "கேமரா AI ஸ்கேன் சிமுலேட்டர்",
+    product_name_1: "ஆப்பிள் iPhone 14",
+    product_name_2: "சாம்சங் Galaxy S23",
+    product_name_3: "சோனி ஹெட்போன்",
+    product_name_4: "டெல் லாப்டாப்",
+    product_name_5: "நைகி ஸ்நீக்கர்",
+  },
 };
 
 export function translate(key: string, lang: AppLanguage): string {

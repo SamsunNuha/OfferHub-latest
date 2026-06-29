@@ -8,6 +8,7 @@ import { useDimensions } from '../hooks/useDimensions';
 import { DISTRICT_CENTERS } from '../utils/districts';
 import { scatterLocations, MapLocation, calculateDistance } from '../utils/districts';
 import { DistrictSelectorDialog } from '../components/Dialogs';
+import { InteractiveMap } from '../components/InteractiveMap';
 import { Navigation, MapPin, Compass, Layers, Plus, Trash2, Eye } from 'lucide-react-native';
 
 export const MapScreen: React.FC = () => {
@@ -79,28 +80,15 @@ export const MapScreen: React.FC = () => {
     error: '#C62828'
   };
 
-  const handleMapTap = (e: any) => {
-    if (!isPlacementMode) return;
-
-    // Simulate placing a new merchant at tap coordinate offset
-    const nativeEvent = e.nativeEvent;
-    
-    // Translate tap position into simulated coordinate offset
-    const mapHeight = 280;
-    const latOffset = ((nativeEvent.locationY / mapHeight) - 0.5) * -0.015;
-    const lonOffset = ((nativeEvent.locationX / Dimensions.get('window').width) - 0.5) * 0.015;
-
-    const newLat = center.latitude + latOffset;
-    const newLon = center.longitude + lonOffset;
-
+  const onPlaceLocation = (latitude: number, longitude: number) => {
     const newLoc: MapLocation = {
       id: `custom_${Date.now()}`,
       name: "User Placed Brand Outlet",
       category: "Grocery",
-      latitude: newLat,
-      longitude: newLon,
+      latitude: latitude,
+      longitude: longitude,
       district: district,
-      address: `Simulated Coordinates: ${newLat.toFixed(4)}, ${newLon.toFixed(4)}`,
+      address: `Simulated Coordinates: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
       contact: "+94 11 000 0000",
       rating: 5.0,
       offers: ["Platform Approved Deal 15% OFF"]
@@ -109,7 +97,7 @@ export const MapScreen: React.FC = () => {
     setPlacedLocs(prev => [...prev, newLoc]);
     setSelectedLoc(newLoc);
     setIsPlacementMode(false);
-    triggerMockNotification("📍 Merchant Placed", `Successfully placed custom store at coordinates ${newLat.toFixed(4)}N, ${newLon.toFixed(4)}E`);
+    triggerMockNotification("📍 Merchant Placed", `Successfully placed custom store at coordinates ${latitude.toFixed(4)}N, ${longitude.toFixed(4)}E`);
   };
 
   const handleDirectionsToggle = () => {
@@ -139,100 +127,31 @@ export const MapScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* MAP GRID BOX */}
-        <TouchableOpacity 
-          activeOpacity={1}
-          style={[
-            styles.mapGridContainer, 
-            { 
-              backgroundColor: isDarkMap ? '#05020A' : '#EDE7F6', 
-              borderColor: colors.border 
-            }
-          ]}
-          onPress={handleMapTap}
-        >
-          {/* Simulated Grid Overlay lines */}
-          <View style={styles.gridLinesOverlay} pointerEvents="none">
-            {[1,2,3,4,5].map(i => (
-              <View key={`h_${i}`} style={[styles.gridLineH, { top: `${i * 20}%`, borderColor: isDarkMap ? '#22163A' : '#D1C4E9' }]} />
-            ))}
-            {[1,2,3,4,5].map(i => (
-              <View key={`v_${i}`} style={[styles.gridLineV, { left: `${i * 20}%`, borderColor: isDarkMap ? '#22163A' : '#D1C4E9' }]} />
-            ))}
-          </View>
-
-          {/* Simulated Heatmap glow overlays */}
-          {isHeatmap && (
-            <View style={styles.heatmapOverlay} pointerEvents="none">
-              <View style={[styles.heatSpot, { top: '30%', left: '40%' }]} />
-              <View style={[styles.heatSpot, { top: '60%', left: '70%' }]} />
-            </View>
-          )}
-
-          {/* User GPS Dot */}
-          <View style={[styles.gpsDot, { top: '50%', left: '50%' }]}>
-            <View style={styles.gpsPulse} />
-            <View style={styles.gpsInner} />
-          </View>
-
-          {/* Scattered Store Pins */}
-          {allLocations.map((loc, index) => {
-            // Translate coordinates to relative percentage positions on screen grid
-            const latDiff = loc.latitude - center.latitude;
-            const lonDiff = loc.longitude - center.longitude;
-
-            // Simple scaling factors to fit scattered bounds beautifully in center
-            const relativeTop = 50 - (latDiff * 2500); // Inverse for latitude
-            const relativeLeft = 50 + (lonDiff * 2500);
-
-            const isSelected = selectedLoc?.id === loc.id;
-
-            return (
-              <TouchableOpacity
-                key={loc.id}
-                style={[
-                  styles.pinContainer, 
-                  { 
-                    top: `${Math.min(90, Math.max(10, relativeTop))}%`, 
-                    left: `${Math.min(90, Math.max(10, relativeLeft))}%` 
-                  }
-                ]}
-                onPress={() => {
-                  setSelectedLoc(loc);
-                  setShowDirections(false);
-                }}
-              >
-                <View style={[
-                  styles.pinGlow, 
-                  { backgroundColor: isSelected ? colors.primary : '#8E24AA' }
-                ]} />
-                <View style={[
-                  styles.pinBody, 
-                  { backgroundColor: isSelected ? colors.primary : colors.surface }
-                ]}>
-                  <Text style={{ fontSize: 10 }}>
-                    {loc.category === 'Grocery' ? '🛒' : loc.category === 'Electronics' ? '🔌' : loc.category === 'Fashion' ? '👗' : '🍕'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-
-          {/* Directions Polyline Path */}
-          {showDirections && selectedLoc && (
-            <View style={styles.directionLineContainer} pointerEvents="none">
-              {/* Pulsing route line from center (GPS) to selectedLoc pin */}
-              <View style={[styles.routePolyline, { borderColor: colors.primary }]} />
-            </View>
-          )}
+        {/* REAL INTERACTIVE GOOGLE MAPS COMPONENT */}
+        <View style={[styles.mapGridContainer, { borderColor: colors.border }]}>
+          <InteractiveMap
+            center={center}
+            locations={allLocations}
+            selectedLoc={selectedLoc}
+            onSelectLoc={(loc) => {
+              setSelectedLoc(loc);
+              setShowDirections(false);
+            }}
+            showDirections={showDirections}
+            isHeatmap={isHeatmap}
+            isDarkMap={isDarkMap}
+            isPlacementMode={isPlacementMode}
+            onPlaceLocation={onPlaceLocation}
+            gpsCoords={{ latitude: gpsLat, longitude: gpsLon }}
+          />
 
           {/* Diagnostic placement overlay badge */}
           {isPlacementMode && (
             <View style={styles.placementBadge} pointerEvents="none">
-              <Text style={styles.placementText}>PLACEMENT MODE ACTIVE: TAP GRID TO ADD OUTLET</Text>
+              <Text style={styles.placementText}>PLACEMENT MODE ACTIVE: TAP MAP TO ADD OUTLET</Text>
             </View>
           )}
-        </TouchableOpacity>
+        </View>
 
         {/* MAP STYLE CONTROLS BAR */}
         <View style={styles.controlsRow}>
