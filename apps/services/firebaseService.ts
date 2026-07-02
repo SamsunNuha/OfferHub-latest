@@ -573,20 +573,86 @@ export const FirebaseService = {
     }
   },
 
-  async followBrand(brandName: string): Promise<void> {
+  // Follow a brand: writes to follows/{userId}/brands/{brandId}
+  // and increments followerCount on the brand doc.
+  async followBrand(userEmail: string, brandName: string): Promise<void> {
+    const userId = userEmail.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const brandId = brandName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+    // Update local state
     const match = localDb.brands.find(b => b.name === brandName);
     if (match) {
-      match.isFollowed = !match.isFollowed;
-      match.followerCount = match.isFollowed ? match.followerCount + 1 : match.followerCount - 1;
-      
-      if (fbConfigured) {
-        try {
-          await setDoc(doc(fbDb, 'brands', brandName), match, { merge: true });
-        } catch (e) {
-          console.error("Firestore brand follow toggle failed:", e);
-        }
+      match.isFollowed = true;
+      match.followerCount = (match.followerCount || 0) + 1;
+    }
+
+    if (fbConfigured) {
+      try {
+        // Write follow relationship
+        await setDoc(
+          doc(fbDb, 'follows', userId, 'brands', brandId),
+          { brandName, followedAt: Date.now() }
+        );
+        // Increment follower count on brand doc
+        const brandRef = doc(fbDb, 'brands', brandName);
+        const brandSnap = await getDoc(brandRef);
+        const current = brandSnap.exists() ? (brandSnap.data()?.followerCount || 0) : 0;
+        await updateDoc(brandRef, { followerCount: current + 1, isFollowed: true });
+      } catch (e) {
+        console.error('Firestore followBrand failed:', e);
       }
     }
+
+    // Notify user
+    await this.addNotification(
+      `❤️ Following ${brandName}`,
+      `You'll get notified when ${brandName} posts new offers or deals!`,
+      'PROMO'
+    );
+  },
+
+  // Unfollow a brand
+  async unfollowBrand(userEmail: string, brandName: string): Promise<void> {
+    const userId = userEmail.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const brandId = brandName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+    // Update local state
+    const match = localDb.brands.find(b => b.name === brandName);
+    if (match) {
+      match.isFollowed = false;
+      match.followerCount = Math.max(0, (match.followerCount || 1) - 1);
+    }
+
+    if (fbConfigured) {
+      try {
+        await deleteDoc(doc(fbDb, 'follows', userId, 'brands', brandId));
+        const brandRef = doc(fbDb, 'brands', brandName);
+        const brandSnap = await getDoc(brandRef);
+        const current = brandSnap.exists() ? (brandSnap.data()?.followerCount || 1) : 1;
+        await updateDoc(brandRef, { followerCount: Math.max(0, current - 1), isFollowed: false });
+      } catch (e) {
+        console.error('Firestore unfollowBrand failed:', e);
+      }
+    }
+  },
+
+  // Get all brands the user follows (returns set of brand names)
+  async getFollowedBrands(userEmail: string): Promise<Set<string>> {
+    const userId = userEmail.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    if (fbConfigured) {
+      try {
+        const snap = await getDocs(collection(fbDb, 'follows', userId, 'brands'));
+        const names = new Set<string>();
+        snap.forEach(d => names.add(d.data().brandName));
+        return names;
+      } catch (e) {
+        console.warn('Could not load followed brands:', e);
+      }
+    }
+    // Local fallback
+    const followed = new Set<string>();
+    localDb.brands.filter(b => b.isFollowed).forEach(b => followed.add(b.name));
+    return followed;
   },
 
   async redeemCoupon(userEmail: string, code: string): Promise<boolean> {

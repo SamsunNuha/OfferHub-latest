@@ -4,7 +4,7 @@
     "slug": "offer-hub-sri-lanka",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./apps/assets/logo_full.png",
+    "icon": "./apps/assets/app_icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
       "backgroundColor": "#0C0717"
@@ -17,11 +17,12 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0C0717"
+        "foregroundImage": "./apps/assets/app_icon.png",
+        "backgroundColor": "#6B21A8"
       }
     },
     "web": {
-      "favicon": "./apps/assets/logo_full.png",
+      "favicon": "./apps/assets/app_icon.png",
       "bundler": "webpack"
     },
     "platforms": [

@@ -144,7 +144,7 @@ export default function RegisterScreen({ navigation }: any) {
 
   const accountTypes: { type: AccountType; Icon: any; label: string; desc: string }[] = [
     { type: 'user', Icon: User, label: 'Customer', desc: 'Explore & shop' },
-    { type: 'merchant', Icon: Store, label: 'Merchant', desc: 'Promote business' },
+    { type: 'merchant', Icon: Store, label: 'Business Partner', desc: 'Promote business' },
     { type: 'admin', Icon: Shield, label: 'Admin', desc: 'Manage platform' },
   ];
 

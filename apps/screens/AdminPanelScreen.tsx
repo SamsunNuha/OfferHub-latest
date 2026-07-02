@@ -76,7 +76,7 @@ const SUPERADMIN_CREDENTIALS = { username: 'superadmin', password: 'SuperSecret1
   const liveOffers = offers.filter(o => o.isApproved);
 
   // Admin Profile Info
-  const adminName = currentUser?.name || "Mohamed Ruskan";
+  const adminName = currentUser?.name || "Super Admin";
   const adminEmail = currentUser?.email || "admin@offerlanka.com";
   const adminAvatar = "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80";
 
@@ -996,10 +996,21 @@ return (
                     .filter(o => o.title.toLowerCase().includes(catalogueSearch.toLowerCase()) || o.storeName.toLowerCase().includes(catalogueSearch.toLowerCase()))
                     .map(o => (
                       <View key={o.id} style={[styles.catalogItemCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        {o.imageUrl && (
+                          <Image 
+                            source={{ uri: o.imageUrl }} 
+                            style={{ width: 60, height: 60, borderRadius: 8, marginRight: 12 }} 
+                            resizeMode="cover"
+                          />
+                        )}
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.catalogItemName, { color: colors.text }]}>{o.title}</Text>
-                          <Text style={{ color: colors.primary, fontSize: 12, fontWeight: 'bold' }}>{o.discountPercent}% OFF</Text>
-                          <Text style={{ color: colors.subText, fontSize: 10 }}>Merchant: {o.storeName} | Valid Until: {o.validUntil}</Text>
+                          <Text style={{ color: colors.primary, fontSize: 12, fontWeight: 'bold' }}>
+                            {o.discountPercent}% OFF (LKR {o.offerPrice.toLocaleString()}) <Text style={{ textDecorationLine: 'line-through', color: colors.subText, fontSize: 10 }}>LKR {o.originalPrice.toLocaleString()}</Text>
+                          </Text>
+                          <Text style={{ color: colors.subText, fontSize: 10, marginTop: 4 }}>
+                            Merchant: {o.storeName} | Users Bought: {o.purchases || 0}
+                          </Text>
                         </View>
                         <TouchableOpacity 
                           style={[styles.deleteBtn, { backgroundColor: 'rgba(213, 0, 0, 0.1)' }]}

@@ -5,17 +5,7 @@ import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Standard Firebase Configuration Template
-// Replace these placeholders with your actual Firebase project settings
-const firebaseConfig = {
-  apiKey: "AIzaSyB4Yed21N-deGKdsPEr4yD-PwjCIy7SlP0",
-  authDomain: "offer-hub-my-project.firebaseapp.com",
-  projectId: "offer-hub-my-project",
-  storageBucket: "offer-hub-my-project.firebasestorage.app",
-  messagingSenderId: "513807501519",
-  appId: "1:513807501519:web:d99e701f06539419fe0fba",
-  measurementId: "G-RTE4ETERV9"
-};
+import { firebaseConfig } from './firebaseConfig';
 
 // Initialize Firebase App
 let app;

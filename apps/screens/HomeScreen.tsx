@@ -133,7 +133,8 @@ export const HomeScreen: React.FC = () => {
     liveAuctions, placeAuctionBid, addToCart, navigateTo,
     setSelectedProduct, setSelectedOffer,
     pushLogs, bannerNotification,
-    isDrawerOpen, setIsDrawerOpen, t
+    isDrawerOpen, setIsDrawerOpen, t,
+    toggleFollowBrand
   } = useAppContext();
 
   const { width: WIN_W } = useWindowDimensions();
@@ -167,7 +168,25 @@ export const HomeScreen: React.FC = () => {
   const featuredOffers = offers.filter(o => o.isFeatured).slice(0, 5);
   const allDeals = offers.slice(0, 6);
   const aiPicks = products.slice(0, 8);
-  const brandList = brands.slice(0, 11);
+  // Show the featured brands on the home screen
+  const featuredBrandNames = [
+    'Abans',
+    'Keells',
+    'Cargills Food City',
+    'Singer Sri Lanka',
+    'Softlogic',
+    'Damro',
+    'Arpico Super Centre',
+    'ODEL',
+    'Dialog Axiata',
+    'Mobitel',
+    'Hutch',
+    'Pizza Hut Sri Lanka',
+    'KFC Sri Lanka',
+    'Burger King Sri Lanka',
+    'Nolimit',
+  ];
+  const brandList = brands.filter(b => featuredBrandNames.includes(b.name));
 
   const handleNav = (id: string) => {
     setActiveScreen(id);
@@ -200,7 +219,7 @@ export const HomeScreen: React.FC = () => {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
             {getBrandLogo(banners[activeBanner].store) && (
               <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } }}>
-                <Image source={getBrandLogo(banners[activeBanner].store)} style={{ width: 30, height: 30 }} resizeMode="contain" />
+                <Image source={getBrandLogo(banners[activeBanner].store)} style={{ width: 30, height: 30, borderRadius: 15 }} resizeMode="cover" />
               </View>
             )}
             <View style={[styles.heroTag, { marginBottom: 0, alignSelf: 'center' }]}><Text style={styles.heroTagText}>{banners[activeBanner].tag}</Text></View>
@@ -401,17 +420,22 @@ export const HomeScreen: React.FC = () => {
                   }
                 ]}>
                   {localLogo ? (
-                    <Image source={localLogo} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+                    <Image source={localLogo} style={{ width: '100%', height: '100%', borderRadius: 21 }} resizeMode="cover" />
                   ) : brand.logo ? (
-                    <Image source={{ uri: brand.logo }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+                    <Image source={{ uri: brand.logo }} style={{ width: '100%', height: '100%', borderRadius: 21 }} resizeMode="cover" />
                   ) : (
                     <Text style={styles.brandInitial}>{(brand.name || 'B')[0]}</Text>
                   )}
                 </View>
                 <Text style={styles.brandName} numberOfLines={1}>{brand.name}</Text>
                 <Text style={styles.brandCat} numberOfLines={1}>{brand.category}</Text>
-                <TouchableOpacity style={styles.followBtn}>
-                  <Text style={styles.followBtnText}>Follow</Text>
+                <TouchableOpacity
+                  style={[styles.followBtn, brand.isFollowed && { backgroundColor: C.accent, borderColor: C.accent }]}
+                  onPress={(e) => { e.stopPropagation && e.stopPropagation(); toggleFollowBrand(brand.name); }}
+                >
+                  <Text style={[styles.followBtnText, brand.isFollowed && { color: '#fff' }]}>
+                    {brand.isFollowed ? '✓ Following' : 'Follow'}
+                  </Text>
                 </TouchableOpacity>
               </TouchableOpacity>
             );

@@ -226,7 +226,10 @@ export const MainApp: React.FC = () => {
             ? <Sun size={15} color={colors.accent} />
             : <Moon size={15} color={colors.accent} />}
           <Text style={[styles.darkToggleText, { color: colors.sub }]}>Dark Mode</Text>
-          <View style={[styles.toggleTrack, { backgroundColor: colors.bg }, isDarkMode && { backgroundColor: colors.accent }]}>
+          <View style={[
+            styles.toggleTrack,
+            { backgroundColor: isDarkMode ? colors.accent : '#D0C0EC', borderColor: isDarkMode ? colors.accent : '#A88CCC' }
+          ]}>
             <View style={[styles.toggleThumb, isDarkMode && { alignSelf: 'flex-end' }]} />
           </View>
         </TouchableOpacity>
@@ -413,6 +416,7 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     padding: 2,
+    borderWidth: 1,
   },
   toggleThumb: {
     width: 14,

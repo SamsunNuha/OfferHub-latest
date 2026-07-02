@@ -4,13 +4,14 @@ import { getFirestore, serverTimestamp } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 // TODO: Replace with your own Firebase config values
-const firebaseConfig = {
-  apiKey: 'YOUR_API_KEY',
-  authDomain: 'YOUR_AUTH_DOMAIN',
-  projectId: 'YOUR_PROJECT_ID',
-  storageBucket: 'YOUR_STORAGE_BUCKET',
-  messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-  appId: 'YOUR_APP_ID',
+export const firebaseConfig = {
+  apiKey: "AIzaSyDtYGThfsZ_w4cTtnJhsGosH9bQTneIKF0",
+  authDomain: "offer-hub-f89e9.firebaseapp.com",
+  projectId: "offer-hub-f89e9",
+  storageBucket: "offer-hub-f89e9.firebasestorage.app",
+  messagingSenderId: "366280180563",
+  appId: "1:366280180563:web:46f7085fabd58443a2d7a6",
+  measurementId: "G-2FQQZPCMMS"
 };
 
 const app = initializeApp(firebaseConfig);
